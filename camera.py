@@ -20,13 +20,24 @@ class Cameras():
 		self.sample_img = None
 		self.last_frame = None
 	
-	def init_cam(self):
-		self.scene = cv2.VideoCapture(0)
+	def init_scenecam(self, indX):
+		self.scene = cv2.VideoCapture(indX)
+	
+	def play_scene(self):
+		ret, image = self.scene.read()
+		if ret: return image
+		else: print('Could not retrieve frame from scene camera')
+	
+	def init_reyecam(self, indX):
+		self.reye = cv2.VideoCapture(indX)
+		
+	def play_reye(self):
+		ret, image = self.reye.read()
+		if ret: return image
+		else: print('Could not retrieve frame from eye camera')
 	
 	def list_devices(self):
-		is_working = True
 		dev_port = 0
-		devices = []
 		self.dev_list = []
 		while dev_port < 5:
 			camera = cv2.VideoCapture(dev_port)
@@ -41,8 +52,10 @@ class Cameras():
 		return self.dev_list
 	
 	def pass_defFrame(self):
-		#time.sleep(2.0)
+		self.init_cam()
+		time.sleep(2.0)
 		ret, image = self.scene.read()
+		self.close_cam()
 		if ret: return image
 		else:
 			print("No luck")

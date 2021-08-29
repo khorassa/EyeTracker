@@ -22,6 +22,8 @@ class Cameras():
 	
 	def init_scenecam(self, indX):
 		self.scene = cv2.VideoCapture(indX)
+		self.scene.set(3, 320)
+		self.scene.set(4, 240)
 	
 	def play_scene(self):
 		ret, image = self.scene.read()
@@ -30,6 +32,8 @@ class Cameras():
 	
 	def init_reyecam(self, indX):
 		self.reye = cv2.VideoCapture(indX)
+		self.reye.set(3, 320)
+		self.reye.set(4, 240)
 		
 	def play_reye(self):
 		ret, image = self.reye.read()

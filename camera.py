@@ -9,15 +9,13 @@ import numpy as np
 #from threading import Thread
 #from multiprocessing import Process
 
-class Cameras():
+class Cameras_ctrl():
 	
-	
-	def __init__(self): # add camera base class
+	def __init__(self):
 		self.enable = False
 		self.dev_list = []
 		self.scene = None
 		self.reye = None
-		self.sample_img = None
 		self.last_frame = None
 	
 	def init_scenecam(self, indX):

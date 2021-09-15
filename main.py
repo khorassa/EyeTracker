@@ -14,8 +14,6 @@ from eye import EyeCamera
 from vid_thread import vid_feed
 from calibration import Calibrator
 
-from camera import Cameras_ctrl
-
 class CalibWindow(QWidget):
 	
 	estimate_button = Signal()
@@ -59,9 +57,6 @@ class CalibWindow(QWidget):
 	def draw_target(self, tgt_idx):
 		if tgt_idx > 0:
 			getattr(self, 'targ_' + str(tgt_idx)).clear()
-			pass
-		#self.label = QLabel(self)
-		#self.layout.addWidget(self.label, TARGET_LOCS[tgt_idx][0], TARGET_LOCS[tgt_idx][1])
 		
 		width = int(self.size().width()/10)
 		name = 'targ_' + str(tgt_idx+1)
@@ -86,29 +81,24 @@ class StartWindow(QMainWindow):
 		# Ability to use video file
 		# Add mode selection ability
 		
-		self.cams = Cameras_ctrl()
-		
 		self.top_widget = QWidget()
 		self.scene_menu = QComboBox(self.top_widget)
 		self.reye_menu = QComboBox(self.top_widget)
-		self.pupil_detect = QCheckBox('2D Pupil Detection', self.top_widget)
 		list_of_cams = [str(i) for i in self.list_devs()]
 		self.scene_menu.addItems(list_of_cams)
 		self.reye_menu.addItems(list_of_cams)
 		self.reye_menu.setCurrentIndex(self.scene_menu.currentIndex() + 1)
-		self.buttonFeeds = QPushButton('Start feeds', self.top_widget)
+		self.buttonFeeds = QPushButton('Initialize cameras', self.top_widget)
 		self.buttonCalib = QPushButton('Calibrate', self.top_widget)
-		self.buttonStop = QPushButton('Stop all', self.top_widget)
-		self.EstButton = QPushButton('Estimate Gaze', self.top_widget) # activated when estimation function is ready, emission from the learning thread
+		self.buttonStop = QPushButton('Stop', self.top_widget)
 		self.fig_scene = QLabel()
 		self.fig_reye = QLabel()
 		
 		self.layoutTop = QVBoxLayout(self.top_widget)
 		
 		self.layoutTop.addWidget(self.buttonFeeds)
-		self.layoutTop.addWidget(self.buttonCalib)
 		self.layoutTop.addWidget(self.buttonStop)
-		self.layoutTop.addWidget(self.pupil_detect)
+		self.layoutTop.addWidget(self.buttonCalib)
 		self.layoutTop.addWidget(self.fig_scene)
 		self.layoutTop.addWidget(self.scene_menu)
 		self.layoutTop.addWidget(self.fig_reye)
@@ -135,8 +125,8 @@ class StartWindow(QMainWindow):
 	
 	def start_feeds(self):
 		self.init_cams()
-		self.scene_feed = vid_feed(False, self.sceneCam)
-		self.reye_feed = vid_feed(self.pupil_detect.isChecked(), self.eyeCam)
+		self.scene_feed = vid_feed(self.sceneCam)
+		self.reye_feed = vid_feed(self.eyeCam)
 		self.scene_feed.start()
 		self.reye_feed.start()
 		self.scene_feed.ImgUpdate.connect(self.update_scene)
@@ -145,10 +135,6 @@ class StartWindow(QMainWindow):
 	def stop_all(self):
 		self.scene_feed.stop()
 		self.reye_feed.stop()
-		time.sleep(0.5)
-		print(self.sceneCam, self.eyeCam)
-		#self.sceneCam.close_cap()
-		#self.eyeCam.close_cap()
 	
 	def calib_popup(self):
 		self.calibwindow = CalibWindow(self.calibrator)
@@ -157,6 +143,8 @@ class StartWindow(QMainWindow):
 	
 	def enable_estButton(self):
 		print('activate estimation button')
+		self.EstButton = QPushButton('Estimate Gaze', self.top_widget)
+		self.layoutTop.addWidget(self.EstButton)
 		pass
 
 

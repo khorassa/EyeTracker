@@ -79,7 +79,7 @@ class Cam_base():
         return self.cam_active
 
     def set_source(self, index):
-        print('setting camera source to', index)
+        print('setting', self.name, 'source to', index)
         if self.cam_active: 
             self.close_cap()
         self.source = index
@@ -94,11 +94,12 @@ class Cam_base():
             self.cap.set(3, 360)
             self.cap.set(4, 270)
         self.mode = res + (30,)
-        self.shared_array = self.create_shared_array(self.mode)
+        #self.shared_array = self.create_shared_array(self.mode)
     
     def close_cap(self):
         self.cap.release()
         self.cam_active = False
+        print(self.name, 'capture closed')
         #self.load_state()
         #self._set_fps_modes()
         #self.shared_array = self.create_shared_array(self.mode)
@@ -128,6 +129,7 @@ class Cam_base():
         if self.last_frame_check: return self.process(img)
         
     def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera
+        print('going through here') 
         return img
     
     def get_processed_data(self):

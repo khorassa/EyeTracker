@@ -79,9 +79,11 @@ class Calibrator(QObject):
                     pupil_pos.append(eye_pos)
                     pup_x.append(eye_pos[0])
                     pup_y.append(eye_pos[1])
-            
-            pupil_data.append(tuple((np.median(pup_x), np.median(pup_y)))) # median of each dimension separately over all 5 seconds
-            trgt_data.append(tuple((np.median(tgt_x), np.median(tgt_y)))) # spliting the x and y could cause issues if the user is moving their head too much
+            pup_tup = tuple((np.median(pup_x), np.median(pup_y)))
+            tgt_tup = tuple((np.median(tgt_x), np.median(tgt_y)))
+            if (pup_tup[0] == np.nan) or (pup_tup[0] == np.nan) or (tgt_tup[0] == np.nan) or (tgt_tup[1] == np.nan): continue
+            pupil_data.append(pup_tup) # median of each dimension separately over all 5 seconds
+            trgt_data.append(tgt_tup) # spliting the x and y could cause issues if the user is moving their head too much
             self.curr_tgt_idx += 1
         print('data collection ended, proceeding with fitting the estimation function')
         print('pupil data: ', pupil_data)

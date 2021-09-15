@@ -5,9 +5,8 @@ class vid_feed(QThread):
 	
 	ImgUpdate = Signal(QImage)
 	
-	def __init__(self, mode, thing):
+	def __init__(self, thing):
 		super().__init__()
-		self.mode = mode # for 2d pupil detection
 		self.player = thing
 	
 	def run(self):

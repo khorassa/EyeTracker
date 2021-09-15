@@ -13,8 +13,7 @@ class vid_feed(QThread):
 	def run(self):
 		self.ThreadActive = True
 		while self.ThreadActive:
-			image = self.player.return_frame()
-			if self.mode is True: image = self.player.process(image)
+			image, res = self.player.return_frame()
 			qimage = QImage(image, image.shape[1], image.shape[0], QImage.Format_RGB888)
 			self.ImgUpdate.emit(qimage)
 	

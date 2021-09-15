@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 import time
 import os
-import data_storage as ds
-from PySide2.QtCore import Signal, Slot, Property
+from PySide2.QtCore import Signal, Slot, Property, QObject
+from PySide2.QtGui import QImage
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process import kernels
 from threading import Thread
 
 
-class Calibrator():
+class Calibrator(QObject):
 
     '''
     An instance of Calibrator is responsible for:
@@ -19,19 +19,22 @@ class Calibrator():
     - providing onscreen gaze predictions
     '''
 
-    move_on = Signal()
+    move_on = Signal(int)
     enable_estimation = Signal()
     draw_estimation = Signal('QVariantList', 'QVariantList', 'QVariantList',
                              'QString', 'QString')
+    sceneImg = Signal(QImage)
+    reyeImg = Signal(QImage)
                             
 
     def __init__(self, v_targets, h_targets, samples_per_tgt, timeout):
+        super().__init__()
         '''
         ntargets: number of targets that are going to be shown for calibration
         frequency: value of the tracker's frequency in Hz
         '''
         self.target_list = self._generate_target_list(v_targets, h_targets)
-        self.storer = ds.Storer(self.target_list)
+        #self.storer = ds.Storer(self.target_list)
         #self.l_regressor, self.l_regressor_3D = None, None
         self.r_regressor, self.r_regressor_3D = None, None
         self.current_target = -1
@@ -42,13 +45,80 @@ class Calibrator():
         self.mode_3D = False
         self.storage = False
         self.estimation = {}
-
-
+        self.re_err = None
+        self.stream_check = False
+        self.curr_tgt_idx = 0
+    
+    def start_calibration(self):
+        self.learning = Thread(target=self.calibrate, args=(), daemon=True)
+        self.learning.start()
+        
+    def calibrate(self):
+        trgt_data = []
+        pupil_data = []
+        while self.curr_tgt_idx < 9: #number of targets
+            self.move_on.emit(self.curr_tgt_idx) # passing an index for target location on the calib window
+            time.sleep(0.1)
+            stT = time.time()
+            trgt_pos = []
+            pupil_pos = []
+            tgt_x = []
+            tgt_y = []
+            pup_x = []
+            pup_y = []
+            while time.time() - stT < 5: #seconds
+                sceneimg, aruco_pos = self.scene.return_frame() # image processing happens inside return_frame, check camera_base
+                eyeimg, eye_pos = self.reye.return_frame()
+                print('scene processed data: ', aruco_pos)
+                print('eye processed data: ', eye_pos) 
+                if aruco_pos[0] != -1:
+                    trgt_pos.append(aruco_pos) # third value is time
+                    tgt_x.append(aruco_pos[0])
+                    tgt_y.append(aruco_pos[1])
+                if eye_pos[0] != -1: 
+                    pupil_pos.append(eye_pos)
+                    pup_x.append(eye_pos[0])
+                    pup_y.append(eye_pos[1])
+            
+            pupil_data.append(tuple((np.median(pup_x), np.median(pup_y)))) # median of each dimension separately over all 5 seconds
+            trgt_data.append(tuple((np.median(tgt_x), np.median(tgt_y)))) # spliting the x and y could cause issues if the user is moving their head too much
+            self.curr_tgt_idx += 1
+        print('data collection ended, proceeding with fitting the estimation function')
+        print('pupil data: ', pupil_data)
+        print('trgt data: ', trgt_data)
+        estimationFunc = self._get_clf()
+        estimationFunc.fit(pupil_data, trgt_data) # check the old version for data format
+        self.r_regressor = estimationFunc
+        print('now testing estimation function to find the error')
+        self._test_calibration(st, sr) # result stored in self.re_err
+        self.enable_estimation.emit()
+        
+    def start_stream(self):
+        self.stream_check = True
+        self.streaming = Thread(target=self.stream, args=(), daemon=True)
+        self.streaming.start()
+    
+    def stream(self):
+        while self.stream_check:
+            sceneimg = self.scene.return_frame()
+            eyeimg = self.reye.return_frame()
+            eyeimg, pupil_pos = self.reye.process(eyeimg)
+            #print(pupil_pos)
+            if self.re_err is not None:
+                gaze_est = self._predict2d(pupil_pos)
+                cv2.drawMarker(sceneimg, gaze_est) # needs fixing
+            self.reyeImg.emit(eyeimg)
+            self.sceneImg.emit(sceneimg)
+                
+            
+    def stop_stream(self):
+        self.stream_check = False
+    
     def set_sources(self, scene, reye):
         self.scene = scene
         #self.leye  = leye
         self.reye  = reye
-        self.storer.set_sources(scene, reye)
+        #self.storer.set_sources(scene, reye)
 
 
     def _generate_target_list(self, v, h):
@@ -62,26 +132,26 @@ class Calibrator():
         return target_list
 
 
-    def _get_target_data(self, maxfreq, minfreq):
-        '''
-        scene: sceneCamera object
-        le: left eyeCamera object
-        re: right eyeCamera object
-        thresh: amount of data to be collected per target
-        '''
-        idx = self.current_target
-        t = time.time()
-        tgt = self.storer.targets
+    # def _get_target_data(self, maxfreq, minfreq):
+        # '''
+        # scene: sceneCamera object
+        # le: left eyeCamera object
+        # re: right eyeCamera object
+        # thresh: amount of data to be collected per target
+        # '''
+        # idx = self.current_target
+        # t = time.time()
+        # tgt = self.storer.targets
 
-        while (len(tgt[idx]) < self.samples) and (time.time()-t < self.timeout):
-            self.storer.collect_data(idx, self.mode_3D, minfreq)
-            tgt = self.storer.targets
-            time.sleep(1/maxfreq)
-        self.move_on.emit()
-        print("number of samples collected: t->{}, l->{}, r->{}".format(
-            len(self.storer.targets[idx]), 
-            len(self.storer.l_centers[idx]),
-            len(self.storer.r_centers[idx])))
+        # while (len(tgt[idx]) < self.samples) and (time.time()-t < self.timeout):
+            # self.storer.collect_data(idx, self.mode_3D, minfreq)
+            # tgt = self.storer.targets
+            # time.sleep(1/maxfreq)
+        # self.move_on.emit()
+        # print("number of samples collected: t->{}, l->{}, r->{}".format(
+            # len(self.storer.targets[idx]), 
+            # len(self.storer.l_centers[idx]),
+            # len(self.storer.r_centers[idx])))
 
     
     @Property('QVariantList')
@@ -92,15 +162,15 @@ class Calibrator():
         converted = [float(tgt[0]), float(tgt[1])]
         return converted
 
-    @Slot()
-    def start_calibration(self):
-        print('reseting calibration')
-        self.storer.initialize_storage(len(self.target_list))
-        self.l_regressor = None
-        self.r_regressor = None
-        self.l_regressor_3D = None
-        self.r_regressor_3D = None
-        self.current_target = -1
+    # @Slot()
+    # def start_calibration(self):
+        # print('reseting calibration')
+        # self.storer.initialize_storage(len(self.target_list))
+        # self.l_regressor = None
+        # self.r_regressor = None
+        # self.l_regressor_3D = None
+        # self.r_regressor_3D = None
+        # self.current_target = -1
 
     @Slot()
     def next_target(self):
@@ -113,31 +183,31 @@ class Calibrator():
         self.collector = Thread(target=self._get_target_data, args=(minfq,maxfq,))
         self.collector.start()
 
-    @Slot()
-    def perform_estimation(self):
-        '''
-        Finds a gaze estimation function to be used for 
-        future predictions. Based on Gaussian Processes regression.
-        '''
-        # clf_l = self._get_clf()
-        clf_r = self._get_clf()     
-        st, sl, sr = self.storer.get_random_test_samples(
-            self.samples, len(self.target_list))                             
-        targets = self.storer.get_targets_list()
-        # if self.leye.is_cam_active():                                       
-            # l_centers = self.storer.get_l_centers_list(self.mode_3D)
-            # clf_l.fit(l_centers, targets)
-            # self._set_regressor('left', clf_l)
-        if self.reye.is_cam_active():
-            r_centers = self.storer.get_r_centers_list(self.mode_3D)
-            clf_r.fit(r_centers, targets)
-            self._set_regressor('right', clf_r)
-        print("Gaze estimation finished")
-        self._test_calibration(st, sl, sr)
-        print('Estimation assessment ready')
-        self.enable_estimation.emit()
-        if self.storage:
-            self.storer.store_calibration()
+    # @Slot()
+    # def perform_estimation(self):
+        # '''
+        # Finds a gaze estimation function to be used for 
+        # future predictions. Based on Gaussian Processes regression.
+        # '''
+        # # clf_l = self._get_clf()
+        # clf_r = self._get_clf()     
+        # st, sl, sr = self.storer.get_random_test_samples(
+            # self.samples, len(self.target_list))                             
+        # targets = self.storer.get_targets_list()
+        # # if self.leye.is_cam_active():                                       
+            # # l_centers = self.storer.get_l_centers_list(self.mode_3D)
+            # # clf_l.fit(l_centers, targets)
+            # # self._set_regressor('left', clf_l)
+        # if self.reye.is_cam_active():
+            # r_centers = self.storer.get_r_centers_list(self.mode_3D)
+            # clf_r.fit(r_centers, targets)
+            # self._set_regressor('right', clf_r)
+        # print("Gaze estimation finished")
+        # self._test_calibration(st, sl, sr)
+        # print('Estimation assessment ready')
+        # self.enable_estimation.emit()
+        # if self.storage:
+            # self.storer.store_calibration()
         
     def _set_regressor(self, eye, clf):
         if eye == 'left':
@@ -151,22 +221,22 @@ class Calibrator():
             else:
                 self.r_regressor = clf
 
-    @Property('QVariantList')
-    def predict(self):
-        data, pred = [], []
-        if self.mode_3D:
-            data, pred = self._predict3d()
-            if self.storage:
-                l_gz, r_gz   = pred[:2], pred[2:]
-                l_raw, r_raw = data[:3], data[3:]
-                self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
-        else:
-            data, pred = self._predict2d()
-            if self.storage:
-                l_gz, r_gz   = pred[:2], pred[2:]
-                l_raw, r_raw = data[:2], data[2:]
-                self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
-        return pred
+    # @Property('QVariantList')
+    # def predict(self):
+        # data, pred = [], []
+        # if self.mode_3D:
+            # data, pred = self._predict3d()
+            # if self.storage:
+                # l_gz, r_gz   = pred[:2], pred[2:]
+                # l_raw, r_raw = data[:3], data[3:]
+                # self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
+        # else:
+            # data, pred = self._predict2d()
+            # if self.storage:
+                # l_gz, r_gz   = pred[:2], pred[2:]
+                # l_raw, r_raw = data[:2], data[2:]
+                # self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
+        # return pred
 
 
     def _test_calibration(self, st, sl, sr):
@@ -203,7 +273,7 @@ class Calibrator():
         le_err = self.estimation['le_error']
         re_err = self.estimation['re_error']
         print("calling draw_estimation")
-        self.draw_estimation.emit(tgt, le, re, le_err, re_err)
+        self.draw_estimation.emit(tgt, le, re, le_err, re_err) # used for drawing estimation
 
 
     def _predict_batch(self, le, re):
@@ -228,33 +298,19 @@ class Calibrator():
     def _predict2d(self):
         data = [-1,-1,-1,-1]
         pred = [-1,-1,-1,-1]
-        # if self.l_regressor:
-            # le = self.leye.get_processed_data()
-            # if le is not None:
-                # input_data = le[:2].reshape(1,-1)
-                # le_coord = self.l_regressor.predict(input_data)[0]
-                # data[0], data[1] = input_data[0]
-                # pred[0], pred[1] = float(le_coord[0]), float(le_coord[1])
         if self.r_regressor:
             re = self.reye.get_processed_data()
-            if re is not None:
-                input_data = re[:2].reshape(1,-1)
-                re_coord = self.r_regressor.predict(input_data)[0]
-                data[2], data[3] = input_data[0]
-                pred[2], pred[3] = float(re_coord[0]), float(re_coord[1])
+            if re is not None: ####################################### useful
+                input_data = re[:2].reshape(1,-1) ###########################
+                re_coord = self.r_regressor.predict(input_data)[0] ##########
+                data[2], data[3] = input_data[0] ############################
+                pred[2], pred[3] = float(re_coord[0]), float(re_coord[1]) ###
         return data, pred
 
 
     def _predict3d(self):
         d = [-1 for i in range(6)]
         pred = [-1,-1,-1,-1]
-        # if self.l_regressor_3D:
-            # le = self.leye.get_processed_data()
-            # if le is not None:
-                # input_data = le[:3].reshape(1,-1)
-                # le_coord = self.l_regressor_3D.predict(input_data)[0]
-                # d[0], d[1], d[2] = input_data[0]#, d[3], d[4], d[5] = input_data[0]
-                # pred[0], pred[1] = float(le_coord[0]), float(le_coord[1])
         if self.r_regressor_3D:
             re = self.reye.get_processed_data()
             if re is not None:
@@ -273,9 +329,9 @@ class Calibrator():
     def toggle_storage(self):
         self.storage = not self.storage
 
-    @Slot()
-    def save_session(self):
-        self.storer.store_session()
+    # @Slot()
+    # def save_session(self):
+        # self.storer.store_session()
 
 
     def _get_clf(self):

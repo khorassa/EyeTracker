@@ -2,14 +2,14 @@
 # from PySide2.QtCore import QObject, Signal, Slot, QThread, Property, QBasicTimer, QPoint
 # from PySide2.QtQuick import QQuickPaintedItem, QQuickImageProvider
 # from threading import Thread, Lock
-#from multiprocessing import Process, Pipe, Value, Condition, Array
+from multiprocessing import Process, Pipe, Value, Condition, Array
 import cv2
 import numpy as np
 import time
 #import uvc ###
 import sys
 #import traceback
-#import ctypes
+import ctypes
 #import os
 
 
@@ -41,8 +41,8 @@ class Cam_base():
 #         self.fps_res = {}
 #         self.modes = {}
 #         self.mode = None         # --> subclassed property
-#         self.shared_array = None # --> subclassed property
-#         self.shared_pos = None   # --> subclassed property
+        self.shared_array = None # --> subclassed property
+        self.shared_pos = None   # --> subclassed property
         self.source = None
         self.cap = None
         self.width = 0
@@ -81,16 +81,20 @@ class Cam_base():
     def set_source(self, index):
         print('setting camera source to', index)
         if self.cam_active: 
-            self.close_cam()
+            self.close_cap()
         self.source = index
         self.cap = cv2.VideoCapture(index)
         if self.cap.isOpened(): self.cam_active = True
         if self.name is 'reye':
+            res = (320, 240)
             self.cap.set(3, 320)
             self.cap.set(4, 240)
         else:
+            res = (360, 270)
             self.cap.set(3, 360)
             self.cap.set(4, 270)
+        self.mode = res + (30,)
+        self.shared_array = self.create_shared_array(self.mode)
     
     def close_cap(self):
         self.cap.release()
@@ -121,7 +125,27 @@ class Cam_base():
     
     def return_frame(self):
         self.last_frame_check, img = self.cap.read()
-        if self.last_frame_check: return img
+        if self.last_frame_check: return self.process(img)
+        
+    def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera
+        return img
+    
+    def get_processed_data(self):
+        nparray = np.frombuffer(self.shared_pos, dtype=ctypes.c_float)
+        return nparray
+    
+    def get_np_image(self):
+        return self._np_img
+    
+    def _get_shared_np_array(self):
+        nparray = np.frombuffer(self.shared_array, dtype=ctypes.c_uint8)
+        w, h = self.mode[0], self.mode[1]
+        return nparray.reshape((h,w,3))
+    
+    def create_shared_array(self, mode):
+        w = mode[0]
+        h = mode[1]
+        return Array(ctypes.c_uint8, h*w*3, lock=False)
 # 
 #     def to_QPixmap(self, img):
 #         if img is None:
@@ -147,16 +171,6 @@ class Cam_base():
 #                     self.update_image.emit()
 #             except Exception as e:
 #                 print(">>> Exception:", e)
-
-#     def _get_shared_np_array(self):
-#         nparray = np.frombuffer(self.shared_array, dtype=ctypes.c_uint8)
-#         w, h = self.mode[0], self.mode[1]
-#         return nparray.reshape((h,w,3))
-# 
-#     def create_shared_array(self, mode):
-#         w = mode[0]
-#         h = mode[1]
-#         return Array(ctypes.c_uint8, h*w*3, lock=False)
 # 
 #     def requestImage(self, id, size, requestedSize):
 #         return self._image
@@ -164,12 +178,7 @@ class Cam_base():
 #     def requestPixmap(self, id, size, requestImage):
 #         return self._image
 # 
-#     def get_np_image(self):
-#         return self._np_img
 # 
-#     def get_processed_data(self):
-#         nparray = np.frombuffer(self.shared_pos, dtype=ctypes.c_float)
-#         return nparray
 # 
 #     def init_process(self, source, pipe, array, pos, mode, cap): #abstract
 #         return 
@@ -177,8 +186,6 @@ class Cam_base():
 #     def init_vid_process(self, source, pipe, array, pos, mode, cap): #abstract
 #         return
 # 
-#     def process(self, img):
-#         return img
 # 
 #     def join_process(self): #abstract
 #         return

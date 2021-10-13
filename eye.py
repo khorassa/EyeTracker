@@ -60,6 +60,7 @@ class EyeCamera(camera_base.Cam_base):
     def _draw_tracking_info(self, result, img, color=(255,120,120)):
         ellipse = result["ellipse"]
         center = tuple(int(v) for v in ellipse["center"])
+        print('>>>>>>> this is center:', center)
         cv2.drawMarker(img, center, (0,255,0), cv2.MARKER_CROSS, 12, 1)
         self._draw_ellipse(ellipse, img, (0,0,255))
     

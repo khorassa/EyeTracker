@@ -13,6 +13,7 @@ from scene import SceneCamera
 from eye import EyeCamera
 from vid_thread import vid_feed
 from calibration import Calibrator
+from camera import gaze_thread
 
 class CalibWindow(QWidget):
 	
@@ -75,7 +76,7 @@ class StartWindow(QMainWindow):
 		super().__init__()
 		self.sceneCam = SceneCamera('scene')
 		self.eyeCam = EyeCamera('reye')
-		self.calibrator = Calibrator(3, 3, 30, 5)
+		self.calibrator = Calibrator(3, 3, 30, 1) #timeout should be 5 seconds
 		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 		
 		# Ability to use video file
@@ -143,9 +144,30 @@ class StartWindow(QMainWindow):
 	
 	def enable_estButton(self):
 		print('activate estimation button')
-		self.EstButton = QPushButton('Estimate Gaze', self.top_widget)
+		self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
 		self.layoutTop.addWidget(self.EstButton)
-		pass
+		self.EstButton.clicked.connect(self.start_tracking)
+		self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
+		self.layoutTop.addWidget(self.StopEstButton)
+		self.StopEstButton.clicked.connect(self.stop_tracking)
+		
+	def start_tracking(self):
+		self.init_cams()
+		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
+		self.calibrator.start_stream()
+		self.calibrator.FeedUpdate.connect(self.stream_feeds)
+	
+	def stream_feeds(self):
+		self.scene_feed = gaze_thread(self.calibrator, 'scene')
+		self.reye_feed = gaze_thread(self.calibrator, 'eye')
+		self.scene_feed.start()
+		self.reye_feed.start()
+		self.scene_feed.ImgUpdate.connect(self.update_scene)
+		self.reye_feed.ImgUpdate.connect(self.update_reye)
+	
+	def stop_tracking(self):
+		self.stop_all()
+		self.calibrator.stop_stream()
 
 
 if __name__ == '__main__':

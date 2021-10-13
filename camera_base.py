@@ -124,12 +124,15 @@ class Cam_base():
         self.cap.set(cv2.CAP_PROP_FPS, framert)
         self.frame_rate = framert
     
+    def return_raw(self):
+        last_frame_check, img = self.cap.read()
+        if last_frame_check: return img
+    
     def return_frame(self):
         self.last_frame_check, img = self.cap.read()
         if self.last_frame_check: return self.process(img)
         
     def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera
-        print('going through here') 
         return img
     
     def get_processed_data(self):

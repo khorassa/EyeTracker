@@ -24,8 +24,9 @@ class Calibrator(QObject):
     enable_estimation = Signal()
     draw_estimation = Signal('QVariantList', 'QVariantList', 'QVariantList',
                              'QString', 'QString')
-    sceneImg = Signal(QImage)
-    reyeImg = Signal(QImage)
+    # sceneImg = Signal()
+    # reyeImg = Signal()
+    FeedUpdate = Signal()
                             
 
     def __init__(self, v_targets, h_targets, samples_per_tgt, timeout):
@@ -67,7 +68,7 @@ class Calibrator(QObject):
             tgt_y = []
             pup_x = []
             pup_y = []
-            while time.time() - stT < 5: #seconds
+            while time.time() - stT < self.timeout: #seconds
                 sceneimg, aruco_pos = self.scene.return_frame() # image processing happens inside return_frame, check camera_base
                 eyeimg, eye_pos = self.reye.return_frame()
                 print('scene processed data: ', aruco_pos)
@@ -101,6 +102,8 @@ class Calibrator(QObject):
         print('now testing estimation function to find the error')
         #self._test_calibration(st, sr) # result stored in self.re_err
         self.enable_estimation.emit()
+        self.scene.close_cap()
+        self.reye.close_cap()
         
     def start_stream(self):
         self.stream_check = True
@@ -109,26 +112,25 @@ class Calibrator(QObject):
     
     def stream(self):
         while self.stream_check:
-            sceneimg = self.scene.return_frame()
-            eyeimg = self.reye.return_frame()
-            eyeimg, pupil_pos = self.reye.process(eyeimg)
+            eyeimg, pupil_pos = self.reye.return_frame()
+            sceneimg = self.scene.return_raw()
             #print(pupil_pos)
-            if self.re_err is not None:
-                gaze_est = self._predict2d(pupil_pos)
-                cv2.drawMarker(sceneimg, gaze_est) # needs fixing
-            self.reyeImg.emit(eyeimg)
-            self.sceneImg.emit(sceneimg)
-                
+            #if self.re_err is not None:
+            gaze_est = self._predict2d(pupil_pos)
+            print('>>> pupil pos:', pupil_pos)
+            print('>>> gaze point:', gaze_est)
+            cv2.drawMarker(sceneimg, tuple((int(gaze_est[0]*sceneimg.shape[1]), int(gaze_est[1]*sceneimg.shape[0]))), \
+                (0,255,0), cv2.MARKER_CROSS, 12, 1) # verify
+            self.processed_eye = eyeimg
+            self.processed_scene = sceneimg
+            self.FeedUpdate.emit()
             
     def stop_stream(self):
         self.stream_check = False
     
     def set_sources(self, scene, reye):
         self.scene = scene
-        #self.leye  = leye
         self.reye  = reye
-        #self.storer.set_sources(scene, reye)
-
 
     def _generate_target_list(self, v, h):
         target_list = []
@@ -304,17 +306,17 @@ class Calibrator(QObject):
         return le_pred, re_pred
 
 
-    def _predict2d(self):
-        data = [-1,-1,-1,-1]
-        pred = [-1,-1,-1,-1]
+    def _predict2d(self, pupil_pos):
+        # data = [-1,-1,-1,-1]
+        # pred = [-1,-1,-1,-1]
         if self.r_regressor:
-            re = self.reye.get_processed_data()
-            if re is not None: ####################################### useful
-                input_data = re[:2].reshape(1,-1) ###########################
-                re_coord = self.r_regressor.predict(input_data)[0] ##########
-                data[2], data[3] = input_data[0] ############################
-                pred[2], pred[3] = float(re_coord[0]), float(re_coord[1]) ###
-        return data, pred
+            #re = self.reye.get_processed_data()
+            #if re is not None: ####################################### useful
+            input_data = pupil_pos[:2].reshape(1,-1) ###########################
+            re_coord = self.r_regressor.predict(input_data)[0] ##########
+            #data[2], data[3] = input_data[0] ############################
+            #pred[2], pred[3] = float(re_coord[0]), float(re_coord[1]) ###
+        return tuple((float(re_coord[0]), float(re_coord[1])))
 
 
     def _predict3d(self):

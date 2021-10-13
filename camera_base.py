@@ -94,7 +94,6 @@ class Cam_base():
             self.cap.set(3, 360)
             self.cap.set(4, 270)
         self.mode = res + (30,)
-        #self.shared_array = self.create_shared_array(self.mode)
     
     def close_cap(self):
         self.cap.release()

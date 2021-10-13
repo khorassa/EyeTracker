@@ -36,6 +36,8 @@ class Calibrator(QObject):
         frequency: value of the tracker's frequency in Hz
         '''
         self.target_list = self._generate_target_list(v_targets, h_targets)
+        self.h_targets = h_targets
+        self.v_targets = v_targets
         #self.storer = ds.Storer(self.target_list)
         #self.l_regressor, self.l_regressor_3D = None, None
         self.r_regressor, self.r_regressor_3D = None, None
@@ -49,7 +51,15 @@ class Calibrator(QObject):
         self.estimation = {}
         self.re_err = None
         self.stream_check = False
-        self.curr_tgt_idx = 0
+        self.curr_tgt_idx = 1
+        self.processed_scene = 'empty'
+        self.processed_eye = 'empty'
+        
+    def get_htargets(self):
+        return self.h_targets
+        
+    def get_vtargets(self):
+        return self.v_targets
     
     def start_calibration(self):
         self.learning = Thread(target=self.calibrate, args=(), daemon=True)
@@ -58,7 +68,7 @@ class Calibrator(QObject):
     def calibrate(self):
         trgt_data = []
         pupil_data = []
-        while self.curr_tgt_idx < 9: #number of targets
+        while self.curr_tgt_idx <= self.h_targets*self.v_targets: #number of targets
             self.move_on.emit(self.curr_tgt_idx) # passing an index for target location on the calib window
             time.sleep(0.1)
             stT = time.time()
@@ -71,8 +81,8 @@ class Calibrator(QObject):
             while time.time() - stT < self.timeout: #seconds
                 sceneimg, aruco_pos = self.scene.return_frame() # image processing happens inside return_frame, check camera_base
                 eyeimg, eye_pos = self.reye.return_frame()
-                print('scene processed data: ', aruco_pos)
-                print('eye processed data: ', eye_pos) 
+                #print('scene processed data: ', aruco_pos)
+                #print('eye processed data: ', eye_pos) 
                 if aruco_pos[0] != -1:
                     trgt_pos.append(aruco_pos) # third value is time
                     tgt_x.append(aruco_pos[0])
@@ -114,8 +124,7 @@ class Calibrator(QObject):
         while self.stream_check:
             eyeimg, pupil_pos = self.reye.return_frame()
             sceneimg = self.scene.return_raw()
-            #print(pupil_pos)
-            #if self.re_err is not None:
+            if pupil_pos[0] == -1: pupil_pos = np.array([random.random(),random.random(),random.random()])
             gaze_est = self._predict2d(pupil_pos)
             print('>>> pupil pos:', pupil_pos)
             print('>>> gaze point:', gaze_est)
@@ -123,8 +132,13 @@ class Calibrator(QObject):
                 (0,255,0), cv2.MARKER_CROSS, 12, 1) # verify
             self.processed_eye = eyeimg
             self.processed_scene = sceneimg
-            self.FeedUpdate.emit()
-            
+    
+    def return_eye(self):
+        return self.processed_eye
+    
+    def return_scene(self):
+        return self.processed_scene
+    
     def stop_stream(self):
         self.stream_check = False
     

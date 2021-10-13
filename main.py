@@ -22,48 +22,40 @@ class CalibWindow(QWidget):
 	def __init__(self, calibrtr):
 		super().__init__()
 		self.Calibrator = calibrtr
-		self.started = False
 		self.layout = QGridLayout()
-		self.targ_1 = QLabel(self)
-		self.targ_2 = QLabel(self)
-		self.targ_3 = QLabel(self)
-		self.targ_4 = QLabel(self)
-		self.targ_5 = QLabel(self)
-		self.targ_6 = QLabel(self)
-		self.targ_7 = QLabel(self)
-		self.targ_8 = QLabel(self)
-		self.targ_9 = QLabel(self)
 		self.buttonStart = QPushButton('Start Calibration', self)
-		
-		self.layout.addWidget(self.targ_1, 0,0, Qt.AlignLeft)
-		self.layout.addWidget(self.targ_2, 0,1, Qt.AlignCenter)
-		self.layout.addWidget(self.targ_3, 0,2, Qt.AlignRight)
-		self.layout.addWidget(self.targ_4, 1,0, Qt.AlignLeft)
-		self.layout.addWidget(self.targ_5, 1,1, Qt.AlignCenter)
-		self.layout.addWidget(self.targ_6, 1,2, Qt.AlignRight)
-		self.layout.addWidget(self.targ_7, 2,0, Qt.AlignLeft)
-		self.layout.addWidget(self.targ_8, 2,1, Qt.AlignCenter)
-		self.layout.addWidget(self.targ_9, 2,2, Qt.AlignRight)
 		
 		self.layout.addWidget(self.buttonStart)
 		self.setLayout(self.layout)
-		self.already_drawn = False
 		self.buttonStart.clicked.connect(self.start_calib)
 		self.Calibrator.enable_estimation.connect(self.connectEnableEst)
 		self.Calibrator.move_on.connect(self.draw_target)
-			
+		
 	def start_calib(self):
 		self.Calibrator.start_calibration()
 		
-	def draw_target(self, tgt_idx):
-		if tgt_idx > 0:
-			getattr(self, 'targ_' + str(tgt_idx)).clear()
-		
-		width = int(self.size().width()/10)
-		name = 'targ_' + str(tgt_idx+1)
-		getattr(self, name).setPixmap(QPixmap('aruco.png').scaled(QSize(width,width)))
-		# draw Aurco on the window canvas based on x and y
-		
+	def draw_target(self,tgt_i):
+		h_targets = self.Calibrator.get_htargets()
+		v_targets = self.Calibrator.get_vtargets()
+		minDim = min(self.size().width()//(h_targets+1), self.size().height()//(v_targets+1))
+		sqsize = QSize(minDim,minDim)
+		size = QSize(self.size().width()//(h_targets+1), self.size().height()//(v_targets+1))
+		if tgt_i == 1:
+			pixmap = QPixmap('aruco.png')
+			self.targets = []
+			for row in range(v_targets):
+				self.targets.append([])
+				for col in range(h_targets):
+					label = QLabel()
+					label.setAlignment(Qt.AlignCenter)
+					label.setFixedSize(size)
+					self.layout.addWidget(label,row,col,QtCore.Qt.AlignCenter)
+					self.targets[row].append(label)
+			self.targets[0][0].setPixmap(QPixmap('aruco.png').scaled(sqsize))
+		else:
+			self.targets[(tgt_i-2) // h_targets][(tgt_i-2) % h_targets].clear()
+			self.targets[(tgt_i-1) // h_targets][(tgt_i-1) % h_targets].setPixmap(QPixmap('aruco.png').scaled(sqsize))
+			
 	def connectEnableEst(self):
 		self.estimate_button.emit()
 		
@@ -76,7 +68,7 @@ class StartWindow(QMainWindow):
 		super().__init__()
 		self.sceneCam = SceneCamera('scene')
 		self.eyeCam = EyeCamera('reye')
-		self.calibrator = Calibrator(3, 3, 30, 1) #timeout should be 5 seconds
+		self.calibrator = Calibrator(2, 2, 30, 1) #timeout should be 5 seconds
 		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 		
 		# Ability to use video file
@@ -115,6 +107,7 @@ class StartWindow(QMainWindow):
 		return self.sceneCam.list_devices()
 	
 	def update_scene(self, img):
+		#print('reaching here?')
 		self.fig_scene.setPixmap(QPixmap(img))
 	
 	def update_reye(self, img):
@@ -126,8 +119,8 @@ class StartWindow(QMainWindow):
 	
 	def start_feeds(self):
 		self.init_cams()
-		self.scene_feed = vid_feed(self.sceneCam)
-		self.reye_feed = vid_feed(self.eyeCam)
+		self.scene_feed = vid_feed(self.sceneCam, 'normal')
+		self.reye_feed = vid_feed(self.eyeCam, 'normal')
 		self.scene_feed.start()
 		self.reye_feed.start()
 		self.scene_feed.ImgUpdate.connect(self.update_scene)
@@ -136,6 +129,7 @@ class StartWindow(QMainWindow):
 	def stop_all(self):
 		self.scene_feed.stop()
 		self.reye_feed.stop()
+		self.calibrator.stop_stream()
 	
 	def calib_popup(self):
 		self.calibwindow = CalibWindow(self.calibrator)
@@ -148,26 +142,32 @@ class StartWindow(QMainWindow):
 		self.layoutTop.addWidget(self.EstButton)
 		self.EstButton.clicked.connect(self.start_tracking)
 		self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
-		self.layoutTop.addWidget(self.StopEstButton)
-		self.StopEstButton.clicked.connect(self.stop_tracking)
 		
 	def start_tracking(self):
 		self.init_cams()
 		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 		self.calibrator.start_stream()
-		self.calibrator.FeedUpdate.connect(self.stream_feeds)
+		time.sleep(1.0)
+		if self.calibrator.return_scene() != 'empty':
+			self.scene_feed = vid_feed(self.calibrator, 'scene')
+			self.reye_feed = vid_feed(self.calibrator, 'eye')
+			self.scene_feed.start()
+			self.reye_feed.start()
+			self.scene_feed.ImgUpdate.connect(self.update_scene)
+			self.reye_feed.ImgUpdate.connect(self.update_reye)
+
 	
-	def stream_feeds(self):
-		self.scene_feed = gaze_thread(self.calibrator, 'scene')
-		self.reye_feed = gaze_thread(self.calibrator, 'eye')
-		self.scene_feed.start()
-		self.reye_feed.start()
-		self.scene_feed.ImgUpdate.connect(self.update_scene)
-		self.reye_feed.ImgUpdate.connect(self.update_reye)
+	# def stream_feeds(self):
+		# self.scene_feed = gaze_thread(self.calibrator, 'scene')
+		# self.reye_feed = gaze_thread(self.calibrator, 'eye')
+		# self.scene_feed.start()
+		# self.reye_feed.start()
+		# self.scene_feed.ImgUpdate.connect(self.update_scene)
+		# self.reye_feed.ImgUpdate.connect(self.update_reye)
 	
-	def stop_tracking(self):
-		self.stop_all()
-		self.calibrator.stop_stream()
+	# def stop_tracking(self):
+		# self.stop_all()
+		# self.calibrator.stop_stream()
 
 
 if __name__ == '__main__':

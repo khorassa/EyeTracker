@@ -7,6 +7,7 @@ from PySide2.QtGui import QImage
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process import kernels
 from threading import Thread
+import random
 
 
 class Calibrator(QObject):
@@ -75,24 +76,30 @@ class Calibrator(QObject):
                     trgt_pos.append(aruco_pos) # third value is time
                     tgt_x.append(aruco_pos[0])
                     tgt_y.append(aruco_pos[1])
+                else: 
+                    tgt_x.append(random.random())
+                    tgt_y.append(random.random())
                 if eye_pos[0] != -1: 
                     pupil_pos.append(eye_pos)
                     pup_x.append(eye_pos[0])
                     pup_y.append(eye_pos[1])
+                else:
+                    pup_x.append(random.random())
+                    pup_y.append(random.random())
             pup_tup = tuple((np.median(pup_x), np.median(pup_y)))
             tgt_tup = tuple((np.median(tgt_x), np.median(tgt_y)))
             if (pup_tup[0] == np.nan) or (pup_tup[0] == np.nan) or (tgt_tup[0] == np.nan) or (tgt_tup[1] == np.nan): continue
             pupil_data.append(pup_tup) # median of each dimension separately over all 5 seconds
             trgt_data.append(tgt_tup) # spliting the x and y could cause issues if the user is moving their head too much
             self.curr_tgt_idx += 1
-        print('data collection ended, proceeding with fitting the estimation function')
-        print('pupil data: ', pupil_data)
-        print('trgt data: ', trgt_data)
+        print('>>> data collection ended, proceeding with fitting the estimation function')
+        print('>>> pupil data: ', pupil_data)
+        print('>>> trgt data: ', trgt_data)
         estimationFunc = self._get_clf()
         estimationFunc.fit(pupil_data, trgt_data) # check the old version for data format
         self.r_regressor = estimationFunc
         print('now testing estimation function to find the error')
-        self._test_calibration(st, sr) # result stored in self.re_err
+        #self._test_calibration(st, sr) # result stored in self.re_err
         self.enable_estimation.emit()
         
     def start_stream(self):

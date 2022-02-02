@@ -47,6 +47,7 @@ class Cam_base():
         self.cap = None
         self.width = 0
         self.height = 0
+        self.tgt = None
 #        self.pipe, self.child = Pipe()
 #         self.cam_process = None
 #         self.vid_process = None
@@ -128,11 +129,17 @@ class Cam_base():
         if last_frame_check: return img
     
     def return_frame(self):
-        self.last_frame_check, img = self.cap.read()
+        try:
+            self.last_frame_check, img = self.cap.read()
+        else:
+            return self.simulate()
         if self.last_frame_check: return self.process(img)
         
     def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera
         return img
+    
+    def simulate(self):
+        return
     
     def get_processed_data(self):
         nparray = np.frombuffer(self.shared_pos, dtype=ctypes.c_float)
@@ -150,6 +157,9 @@ class Cam_base():
         w = mode[0]
         h = mode[1]
         return Array(ctypes.c_uint8, h*w*3, lock=False)
+    
+    def save_tgt_id(self, tgt_id):
+        self.tgt = tgt_id
 # 
 #     def to_QPixmap(self, img):
 #         if img is None:

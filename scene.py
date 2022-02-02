@@ -41,6 +41,13 @@ class SceneCamera(camera_base.Cam_base):
         return img, target_pos
         #find aruco image
     
+    def simulate(self):
+        img = cv2.imread('aruco.png')
+        x = ((self.tgt-1)%3) * (1/3) + 1/6
+        y = ((self.tgt-1)//3) * (1/3) + 1/6
+        target_pos = np.array([x,y,time.monotonic()],dtype='float32')
+        return img, target_pos
+    
     def init_process(self, source, pipe, array, pos, mode, cap):
         mode = self.check_mode_availability(source, mode)
         self.cam_process = SceneImageProcessor(source, mode, pipe, 

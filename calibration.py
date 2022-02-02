@@ -79,6 +79,8 @@ class Calibrator(QObject):
             pup_x = []
             pup_y = []
             while time.time() - stT < self.timeout: #seconds
+                self.scene.save_tgt_id(self.curr_tgt_idx)
+                self.reye.save_tgt_id(self.curr_tgt_idx)
                 sceneimg, aruco_pos = self.scene.return_frame() # image processing happens inside return_frame, check camera_base
                 eyeimg, eye_pos = self.reye.return_frame()
                 #print('scene processed data: ', aruco_pos)

@@ -57,6 +57,13 @@ class EyeCamera(camera_base.Cam_base):
                 # self.pos = None
         return img, self.pos
     
+    def simulate(self):
+        img = cv2.imread('aruco.png')
+        x = ((self.tgt-1)%3) * (1/3) + 1/6 # change to sin(something)
+        y = ((self.tgt-1)//3) * (1/3) + 1/6
+        target_pos = np.array([x,y,time.monotonic()],dtype='float32')
+        return img, target_pos
+    
     def _draw_tracking_info(self, result, img, color=(255,120,120)):
         ellipse = result["ellipse"]
         center = tuple(int(v) for v in ellipse["center"])

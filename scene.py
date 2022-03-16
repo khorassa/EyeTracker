@@ -25,19 +25,27 @@ class SceneCamera(camera_base.Cam_base):
         self.vid_process = None
         self.shared_array = self.create_shared_array(mode)
         self.shared_pos = self.create_shared_pos()
+        self.calibration = False
 
+    def toggle_calib(self):
+        self.calibration = ~self.calibration
+    
     def process(self, img):
-        height, width = img.shape[0], img.shape[1]
-        dict4 = cv2.aruco.DICT_4X4_50
-        aruco_dict = cv2.aruco.getPredefinedDictionary(dict4)
-        corners, ids,_ = cv2.aruco.detectMarkers(img, aruco_dict)
+        #if not self.calibration: return img # for non-calibration time
         target_pos = np.array([-1, -1, -1])
-        if ids is not None:
-            cv2.aruco.drawDetectedMarkers(img, corners, ids)
-            mean = np.mean(corners[0][0], axis=0)
-            x = mean[0]/width
-            y = mean[1]/height
-            target_pos = np.array([x,y,time.monotonic()],dtype='float32')
+        if self.calibration:
+            height, width = img.shape[0], img.shape[1]
+            dict4 = cv2.aruco.DICT_4X4_50
+            aruco_dict = cv2.aruco.getPredefinedDictionary(dict4)
+            corners, ids,_ = cv2.aruco.detectMarkers(img, aruco_dict)
+            if ids is not None:
+                cv2.aruco.drawDetectedMarkers(img, corners, ids)
+                mean = np.mean(corners[0][0], axis=0)
+                x = mean[0]/width
+                y = mean[1]/height
+                target_pos = np.array([x,y,time.monotonic()],dtype='float32')
+                print('>>> Aruco at:', target_pos)
+        
         return img, target_pos
         #find aruco image
     

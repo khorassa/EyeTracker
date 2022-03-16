@@ -68,7 +68,7 @@ class StartWindow(QMainWindow):
 		super().__init__()
 		self.sceneCam = SceneCamera('scene')
 		self.eyeCam = EyeCamera('reye')
-		self.calibrator = Calibrator(2, 2, 30, 1) #timeout should be 5 seconds
+		self.calibrator = Calibrator(3, 3, 30, 3) #timeout should be 5 seconds
 		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 		
 		# Ability to use video file

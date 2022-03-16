@@ -129,10 +129,10 @@ class Cam_base():
         if last_frame_check: return img
     
     def return_frame(self):
-        try:
-            self.last_frame_check, img = self.cap.read()
-        else:
-            return self.simulate()
+        
+        self.last_frame_check, img = self.cap.read()
+        #else:
+            #return self.simulate()
         if self.last_frame_check: return self.process(img)
         
     def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera

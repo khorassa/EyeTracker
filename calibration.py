@@ -68,6 +68,7 @@ class Calibrator(QObject):
     def calibrate(self):
         trgt_data = []
         pupil_data = []
+        self.scene.toggle_calib()
         while self.curr_tgt_idx <= self.h_targets*self.v_targets: #number of targets
             self.move_on.emit(self.curr_tgt_idx) # passing an index for target location on the calib window
             time.sleep(0.1)
@@ -106,6 +107,7 @@ class Calibrator(QObject):
             trgt_data.append(tgt_tup) # spliting the x and y could cause issues if the user is moving their head too much
             self.curr_tgt_idx += 1
         print('>>> data collection ended, proceeding with fitting the estimation function')
+        self.scene.toggle_calib()
         print('>>> pupil data: ', pupil_data)
         print('>>> trgt data: ', trgt_data)
         estimationFunc = self._get_clf()

@@ -20,7 +20,7 @@ class Cam_base():
     - gathering and managing cam / video specs
     - starting / stop a streaming
     - providing feedback of gaze data processing to the UI
-    
+
     List of methods:
     - list_devices: returns available video ports
     - get_source: returns the chosen port
@@ -31,17 +31,17 @@ class Cam_base():
     - set_frame_rate: takes frame rate and sets FPS
     - return_frame: reads and returns frame
     '''
-    
+
     def __init__(self, name=None):
-#         self._image = None #self.to_QPixmap(cv2.imread("../ui/test.jpg"))
-#         self._np_img = None
+        #         self._image = None #self.to_QPixmap(cv2.imread("../ui/test.jpg"))
+        #         self._np_img = None
         self.name = name
 #        self.capturing = Value('i', 0)
-        self.dev_list = [] ###
+        self.dev_list = []
 #         self.fps_res = {}
 #         self.modes = {}
 #         self.mode = None         # --> subclassed property
-        self.shared_array = None # --> subclassed property
+        self.shared_array = None  # --> subclassed property
         self.shared_pos = None   # --> subclassed property
         self.source = None
         self.cap = None
@@ -59,108 +59,111 @@ class Cam_base():
 #         self.gamma = 1.0
 #         self.color = True
 #         self.flip = False
-        
+
     def list_devices(self):
         dev_port = 0
         devices = []
         while dev_port < 5:
-            camera = cv2.VideoCapture(dev_port)
+            camera = cv2.VideoCapture(dev_port, cv2.CAP_DSHOW)
             if camera.isOpened():
                 is_reading, img = camera.read()
                 camera.release()
                 if is_reading:
                     devices.append(dev_port)
-            dev_port +=1
+            dev_port += 1
         return devices
 
     def get_source(self):
         return self.source
-    
+
     def is_cam_active(self):
         return self.cam_active
 
     def set_source(self, index):
         print('setting', self.name, 'source to', index)
-        if self.cam_active: 
+        if self.cam_active:
             self.close_cap()
         self.source = index
-        self.cap = cv2.VideoCapture(index)
-        if self.cap.isOpened(): self.cam_active = True
-        if self.name is 'reye':
-            res = (320, 240)
-            self.cap.set(3, 320)
-            self.cap.set(4, 240)
-        else:
-            res = (360, 270)
-            self.cap.set(3, 360)
-            self.cap.set(4, 270)
-        self.mode = res + (30,)
-    
+        self.cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        if self.cap.isOpened():
+            self.cam_active = True
+        # if self.name is 'reye':
+        #     res = (320, 240)
+        #     self.cap.set(3, 320)
+        #     self.cap.set(4, 240)
+        # else:
+        #     res = (360, 270)
+        #     self.cap.set(3, 360)
+        #     self.cap.set(4, 270)
+        # self.mode = res + (30,)
+
     def close_cap(self):
         self.cap.release()
         self.cam_active = False
         print(self.name, 'capture closed')
-        #self.load_state()
-        #self._set_fps_modes()
+        # self.load_state()
+        # self._set_fps_modes()
         #self.shared_array = self.create_shared_array(self.mode)
 #         self.capturing.value = 1
-#         self.init_process(source, self.child, self.shared_array, 
+#         self.init_process(source, self.child, self.shared_array,
 #                           self.shared_pos, self.mode, self.capturing)
 #         self.cam_thread = Thread(target=self.thread_loop, args=())
 #         #self.save_state()
 #         self.cam_thread.start()
+
     def check_res(self):
         self.width = self.cap.get(3)
         self.height = self.cap.get(4)
         return self.width, self.height
-    
+
     def set_res(self, w, h):
         self.cap.set(3, w)
         self.cap.set(4, h)
         self.width = w
         self.height = h
-    
+
     def set_frame_rate(self, framert):
         self.cap.set(cv2.CAP_PROP_FPS, framert)
         self.frame_rate = framert
-    
+
     def return_raw(self):
-        last_frame_check, img = self.cap.read()
-        if last_frame_check: return img
-    
-    def return_frame(self):
-        
         self.last_frame_check, img = self.cap.read()
-        #else:
-            #return self.simulate()
-        if self.last_frame_check: return self.process(img)
-        
-    def process(self, img): # defined properly in the upper level class, separately in SceneCamera and EyeCamera
+        if self.last_frame_check:
+            return img
+
+    def return_frame(self):
+        self.last_frame_check, img = self.cap.read()
+        # else:
+        # return self.simulate()
+        if self.last_frame_check:
+            return self.process(img)
+
+    def process(self, img):  # defined properly in the upper level class, separately in SceneCamera and EyeCamera
         return img
-    
+
     def simulate(self):
         return
-    
+
     def get_processed_data(self):
         nparray = np.frombuffer(self.shared_pos, dtype=ctypes.c_float)
         return nparray
-    
+
     def get_np_image(self):
         return self._np_img
-    
+
     def _get_shared_np_array(self):
         nparray = np.frombuffer(self.shared_array, dtype=ctypes.c_uint8)
         w, h = self.mode[0], self.mode[1]
-        return nparray.reshape((h,w,3))
-    
+        return nparray.reshape((h, w, 3))
+
     def create_shared_array(self, mode):
         w = mode[0]
         h = mode[1]
         return Array(ctypes.c_uint8, h*w*3, lock=False)
-    
+
     def save_tgt_id(self, tgt_id):
         self.tgt = tgt_id
-# 
+#
 #     def to_QPixmap(self, img):
 #         if img is None:
 #             return
@@ -185,31 +188,31 @@ class Cam_base():
 #                     self.update_image.emit()
 #             except Exception as e:
 #                 print(">>> Exception:", e)
-# 
+#
 #     def requestImage(self, id, size, requestedSize):
 #         return self._image
-# 
+#
 #     def requestPixmap(self, id, size, requestImage):
 #         return self._image
-# 
-# 
-# 
+#
+#
+#
 #     def init_process(self, source, pipe, array, pos, mode, cap): #abstract
-#         return 
-# 
+#         return
+#
 #     def init_vid_process(self, source, pipe, array, pos, mode, cap): #abstract
 #         return
-# 
-# 
+#
+#
 #     def join_process(self): #abstract
 #         return
-# 
+#
 #     def join_vid_process(self): # abstract
-#         return 
-# 
+#         return
+#
 #     def reset_model(self): #abstract
 #         return
-# 
+#
 #     def get_processed_data(self): #abstract
 #         return
 
@@ -227,7 +230,7 @@ class Cam_base():
 #                 if self.cam_process.is_alive():
 #                     self.cam_process.terminate()
 #             self.cam_thread.join(1)
-# 
+#
 #     def play(self, is_video):
 #         if is_video:
 #             if not self.capturing.value:
@@ -235,19 +238,19 @@ class Cam_base():
 #             else:
 #                 self.pipe.send("play")
 #                 self.paused = False
-# 
+#
 #     def pause(self, is_video):
 #         if is_video:
 #             self.pipe.send("pause")
 #             self.paused = True
-# 
+#
 #     def set_video_file(self, filename):
 #         cap = cv2.VideoCapture(filename)
 #         w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
 #         h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 #         f = cap.get(cv2.CAP_PROP_FPS)
 #         self.source = filename
-#         self.mode = (int(w),int(h),int(f)) 
+#         self.mode = (int(w),int(h),int(f))
 #         self.modes = {}
 #         self.shared_array = self.create_shared_array(self.mode)
 #         ret, frame = cap.read()
@@ -257,10 +260,10 @@ class Cam_base():
 #                 self._image = qimage
 #                 self.update_image.emit()
 #         cap.release()
-# 
+#
 #     def play_video_file(self):
 #         self.capturing.value = 1
-#         self.init_vid_process(self.source, self.child, self.shared_array, 
+#         self.init_vid_process(self.source, self.child, self.shared_array,
 #                     self.shared_pos, self.mode, self.capturing)
 #         self.cam_thread = Thread(target=self.thread_loop, args=())
 #         self.cam_thread.start()
@@ -281,34 +284,34 @@ class Cam_base():
 #         if self.mode not in cap.avaible_modes:
 #             self.mode = sorted(cap.avaible_modes)[0]
 #         cap.close()
-# 
+#
 #     @Property('QVariantList')
 #     def fps_list(self):
 #         return sorted(list(self.fps_res.keys()))
-# 
+#
 #     @Property('QVariantList')
 #     def modes_list(self):
 #         curr_fps = self.mode[2]
 #         return self.fps_res[curr_fps]
-# 
+#
 #     @Property(int)
 #     def current_fps_index(self):
 #         curr_fps = self.mode[2]
 #         fps_list = sorted(list(self.fps_res.keys()))
 #         return fps_list.index(curr_fps)
-# 
+#
 #     @Property(int)
 #     def current_fps(self):
 #         curr_fps = self.mode[2]
 #         return curr_fps
-# 
+#
 #     @Property(int)
 #     def current_res_index(self):
 #         w,h,fps  = self.mode
 #         curr_res = str(w) + " x " + str(h)
 #         res_list = self.fps_res[fps]
 #         return res_list.index(curr_res)
-# 
+#
 #     @Slot(str, str)
 #     def set_mode(self, fps, resolution):
 #         self.stop()
@@ -322,7 +325,7 @@ class Cam_base():
 #         self.shared_array = self.create_shared_array(self.mode)
 #         self.pipe, self.child = Pipe()
 #         self.capturing.value = 1
-#         self.init_process(self.source, self.child, self.shared_array, 
+#         self.init_process(self.source, self.child, self.shared_array,
 #                           self.shared_pos, self.mode, self.capturing)
 #         self.cam_thread = Thread(target=self.thread_loop, args=())
 #         #self.save_state()
@@ -333,13 +336,13 @@ class Cam_base():
 #         self.gamma = value
 #         self.pipe.send("gamma")
 #         self.pipe.send(value)
-# 
+#
 #     @Slot(float)
 #     def set_color(self, value):
 #         self.color = value
 #         self.pipe.send("color")
 #         self.pipe.send(bool(value))
-# 
+#
 #     @Slot(float)
 #     def flip_image(self, value):
 #         self.flip = value
@@ -355,9 +358,9 @@ class Cam_base():
 #             data += str(self.mode[1]) + ':'
 #             data += str(self.mode[2]) #+ ':'
 #             #data += str(self.gamma)   + ':'
-#             #data += str(int(self.color)) 
+#             #data += str(int(self.color))
 #             f.write(data)
-# 
+#
 #     def load_state(self):
 #         if os.path.isfile('config/'+self.name+'config.txt'):
 #             with open('config/'+self.name+'config.txt', 'r') as f:

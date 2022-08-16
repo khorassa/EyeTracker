@@ -15,166 +15,166 @@ from vid_thread import vid_feed
 from calibration import Calibrator
 from camera import gaze_thread
 
+
 class CalibWindow(QWidget):
-	
-	estimate_button = Signal()
-	
-	def __init__(self, calibrtr):
-		super().__init__()
-		self.Calibrator = calibrtr
-		self.layout = QGridLayout()
-		self.buttonStart = QPushButton('Start Calibration', self)
-		
-		self.layout.addWidget(self.buttonStart)
-		self.setLayout(self.layout)
-		self.buttonStart.clicked.connect(self.start_calib)
-		self.Calibrator.enable_estimation.connect(self.connectEnableEst)
-		self.Calibrator.move_on.connect(self.draw_target)
-		
-	def start_calib(self):
-		self.Calibrator.start_calibration()
-		
-	def draw_target(self,tgt_i):
-		h_targets = self.Calibrator.get_htargets()
-		v_targets = self.Calibrator.get_vtargets()
-		minDim = min(self.size().width()//(h_targets+1), self.size().height()//(v_targets+1))
-		sqsize = QSize(minDim,minDim)
-		size = QSize(self.size().width()//(h_targets+1), self.size().height()//(v_targets+1))
-		if tgt_i == 1:
-			pixmap = QPixmap('aruco.png')
-			self.targets = []
-			for row in range(v_targets):
-				self.targets.append([])
-				for col in range(h_targets):
-					label = QLabel()
-					label.setAlignment(Qt.AlignCenter)
-					label.setFixedSize(size)
-					self.layout.addWidget(label,row,col,QtCore.Qt.AlignCenter)
-					self.targets[row].append(label)
-			self.targets[0][0].setPixmap(QPixmap('aruco.png').scaled(sqsize))
-		else:
-			self.targets[(tgt_i-2) // h_targets][(tgt_i-2) % h_targets].clear()
-			self.targets[(tgt_i-1) // h_targets][(tgt_i-1) % h_targets].setPixmap(QPixmap('aruco.png').scaled(sqsize))
-			
-	def connectEnableEst(self):
-		self.estimate_button.emit()
-		
-	def end_calib(self):
-		pass
-		
+
+    estimate_button = Signal()
+
+    def __init__(self, calibrtr):
+        super().__init__()
+        self.Calibrator = calibrtr
+        self.layout = QGridLayout()
+        self.buttonStart = QPushButton('Start Calibration', self)
+
+        self.layout.addWidget(self.buttonStart)
+        self.setLayout(self.layout)
+        self.buttonStart.clicked.connect(self.start_calib)
+        self.Calibrator.enable_estimation.connect(self.connectEnableEst)
+        self.Calibrator.move_on.connect(self.draw_target)
+
+    def start_calib(self):
+        self.Calibrator.start_calibration()
+
+    def draw_target(self, tgt_i):
+        h_targets = self.Calibrator.get_htargets()
+        v_targets = self.Calibrator.get_vtargets()
+        minDim = min(self.size().width()//(h_targets+1),
+                     self.size().height()//(v_targets+1))
+        sqsize = QSize(minDim, minDim)
+        size = QSize(self.size().width()//(h_targets+1),
+                     self.size().height()//(v_targets+1))
+        if tgt_i == 1:
+            pixmap = QPixmap('aruco.png')
+            self.targets = []
+            for row in range(v_targets):
+                self.targets.append([])
+                for col in range(h_targets):
+                    label = QLabel()
+                    label.setAlignment(Qt.AlignCenter)
+                    label.setFixedSize(size)
+                    self.layout.addWidget(
+                        label, row, col, QtCore.Qt.AlignCenter)
+                    self.targets[row].append(label)
+            self.targets[0][0].setPixmap(QPixmap('aruco.png').scaled(sqsize))
+        else:
+            self.targets[(tgt_i-2) // h_targets][(tgt_i-2) % h_targets].clear()
+            self.targets[(tgt_i-1) // h_targets][(tgt_i-1) %
+                                                 h_targets].setPixmap(QPixmap('aruco.png').scaled(sqsize))
+
+    def connectEnableEst(self):
+        self.estimate_button.emit()
+
+    def end_calib(self):
+        pass
+
 
 class StartWindow(QMainWindow):
-	def __init__(self, sceneCam, eyeCam):
-		super().__init__()
-		self.sceneCam = SceneCamera('scene')
-		self.eyeCam = EyeCamera('reye')
-		self.calibrator = Calibrator(3, 3, 30, 3) #timeout should be 5 seconds
-		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
-		
-		# Ability to use video file
-		# Add mode selection ability
-		
-		self.top_widget = QWidget()
-		self.scene_menu = QComboBox(self.top_widget)
-		self.reye_menu = QComboBox(self.top_widget)
-		list_of_cams = [str(i) for i in self.list_devs()]
-		self.scene_menu.addItems(list_of_cams)
-		self.reye_menu.addItems(list_of_cams)
-		self.reye_menu.setCurrentIndex(self.scene_menu.currentIndex() + 1)
-		self.buttonFeeds = QPushButton('Initialize cameras', self.top_widget)
-		self.buttonCalib = QPushButton('Calibrate', self.top_widget)
-		self.buttonStop = QPushButton('Stop', self.top_widget)
-		self.fig_scene = QLabel()
-		self.fig_reye = QLabel()
-		
-		self.layoutTop = QVBoxLayout(self.top_widget)
-		
-		self.layoutTop.addWidget(self.buttonFeeds)
-		self.layoutTop.addWidget(self.buttonStop)
-		self.layoutTop.addWidget(self.buttonCalib)
-		self.layoutTop.addWidget(self.fig_scene)
-		self.layoutTop.addWidget(self.scene_menu)
-		self.layoutTop.addWidget(self.fig_reye)
-		self.layoutTop.addWidget(self.reye_menu)
-		
-		self.setCentralWidget(self.top_widget)
+    def __init__(self):
+        super().__init__()
+        self.sceneCam = SceneCamera('scene')
+        self.eyeCam = EyeCamera('reye')
+        # timeout should be 5 seconds
+        self.calibrator = Calibrator(3, 3, 30, 3)
+        self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 
-		self.buttonFeeds.clicked.connect(self.start_feeds)
-		self.buttonStop.clicked.connect(self.stop_all)
-		self.buttonCalib.clicked.connect(self.calib_popup)
-	
-	def list_devs(self):
-		return self.sceneCam.list_devices()
-	
-	def update_scene(self, img):
-		#print('reaching here?')
-		self.fig_scene.setPixmap(QPixmap(img))
-	
-	def update_reye(self, img):
-		self.fig_reye.setPixmap(QPixmap(img))
-		
-	def init_cams(self):
-		self.sceneCam.set_source(int(self.scene_menu.currentText()))
-		self.eyeCam.set_source(int(self.reye_menu.currentText()))
-	
-	def start_feeds(self):
-		self.init_cams()
-		self.scene_feed = vid_feed(self.sceneCam, 'normal')
-		self.reye_feed = vid_feed(self.eyeCam, 'normal')
-		self.scene_feed.start()
-		self.reye_feed.start()
-		self.scene_feed.ImgUpdate.connect(self.update_scene)
-		self.reye_feed.ImgUpdate.connect(self.update_reye)
-	
-	def stop_all(self):
-		self.scene_feed.stop()
-		self.reye_feed.stop()
-		self.calibrator.stop_stream()
-	
-	def calib_popup(self):
-		self.calibwindow = CalibWindow(self.calibrator)
-		self.calibwindow.estimate_button.connect(self.enable_estButton)
-		self.calibwindow.showMaximized()
-	
-	def enable_estButton(self):
-		print('activate estimation button')
-		self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
-		self.layoutTop.addWidget(self.EstButton)
-		self.EstButton.clicked.connect(self.start_tracking)
-		self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
-		
-	def start_tracking(self):
-		self.init_cams()
-		self.calibrator.set_sources(self.sceneCam, self.eyeCam)
-		self.calibrator.start_stream()
-		time.sleep(1.0)
-		if self.calibrator.return_scene() != 'empty':
-			self.scene_feed = vid_feed(self.calibrator, 'scene')
-			self.reye_feed = vid_feed(self.calibrator, 'eye')
-			self.scene_feed.start()
-			self.reye_feed.start()
-			self.scene_feed.ImgUpdate.connect(self.update_scene)
-			self.reye_feed.ImgUpdate.connect(self.update_reye)
+        # Ability to use video file
+        # Add mode selection ability
 
-	
-	# def stream_feeds(self):
-		# self.scene_feed = gaze_thread(self.calibrator, 'scene')
-		# self.reye_feed = gaze_thread(self.calibrator, 'eye')
-		# self.scene_feed.start()
-		# self.reye_feed.start()
-		# self.scene_feed.ImgUpdate.connect(self.update_scene)
-		# self.reye_feed.ImgUpdate.connect(self.update_reye)
-	
-	# def stop_tracking(self):
-		# self.stop_all()
-		# self.calibrator.stop_stream()
+        self.top_widget = QWidget()
+        self.scene_menu = QComboBox(self.top_widget)
+        self.reye_menu = QComboBox(self.top_widget)
+        list_of_cams = [str(i) for i in self.sceneCam.list_devices()]
+        self.scene_menu.addItems(list_of_cams)
+        self.reye_menu.addItems(list_of_cams)
+        self.reye_menu.setCurrentIndex(self.scene_menu.currentIndex() + 1)
+        self.buttonFeeds = QPushButton('Initialize cameras', self.top_widget)
+        self.buttonCalib = QPushButton('Calibrate', self.top_widget)
+        self.buttonStop = QPushButton('Stop', self.top_widget)
+        self.fig_scene = QLabel()
+        self.fig_reye = QLabel()
+
+        self.layoutTop = QVBoxLayout(self.top_widget)
+
+        self.layoutTop.addWidget(self.buttonFeeds)
+        self.layoutTop.addWidget(self.buttonStop)
+        self.layoutTop.addWidget(self.buttonCalib)
+        self.layoutTop.addWidget(self.fig_scene)
+        self.layoutTop.addWidget(self.scene_menu)
+        self.layoutTop.addWidget(self.fig_reye)
+        self.layoutTop.addWidget(self.reye_menu)
+
+        self.setCentralWidget(self.top_widget)
+
+        self.buttonFeeds.clicked.connect(self.start_feeds)
+        self.buttonStop.clicked.connect(self.stop_all)
+        self.buttonCalib.clicked.connect(self.calib_popup)
+
+    def update_scene(self, img):
+        #print('reaching here?')
+        self.fig_scene.setPixmap(QPixmap(img))
+
+    def update_reye(self, img):
+        self.fig_reye.setPixmap(QPixmap(img))
+
+    def init_cams(self):
+        self.sceneCam.set_source(int(self.scene_menu.currentText()))
+        self.eyeCam.set_source(int(self.reye_menu.currentText()))
+
+    def start_feeds(self):
+        self.init_cams()
+        self.scene_feed = vid_feed(self.sceneCam, 'normal')
+        self.reye_feed = vid_feed(self.eyeCam, 'normal')
+        self.scene_feed.start()
+        self.reye_feed.start()
+        self.scene_feed.ImgUpdate.connect(self.update_scene)
+        self.reye_feed.ImgUpdate.connect(self.update_reye)
+
+    def stop_all(self):
+        self.scene_feed.stop()
+        self.reye_feed.stop()
+        self.calibrator.stop_stream()
+
+    def calib_popup(self):
+        self.calibwindow = CalibWindow(self.calibrator)
+        self.calibwindow.estimate_button.connect(self.enable_estButton)
+        self.calibwindow.showMaximized()
+
+    def enable_estButton(self):
+        print('activate estimation button')
+        self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
+        self.layoutTop.addWidget(self.EstButton)
+        self.EstButton.clicked.connect(self.start_tracking)
+        self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
+
+    def start_tracking(self):
+        self.init_cams()
+        self.calibrator.set_sources(self.sceneCam, self.eyeCam)
+        self.calibrator.start_stream()
+        time.sleep(1.0)
+        if self.calibrator.return_scene() != 'empty':
+            self.scene_feed = vid_feed(self.calibrator, 'scene')
+            self.reye_feed = vid_feed(self.calibrator, 'eye')
+            self.scene_feed.start()
+            self.reye_feed.start()
+            self.scene_feed.ImgUpdate.connect(self.update_scene)
+            self.reye_feed.ImgUpdate.connect(self.update_reye)
+
+    # def stream_feeds(self):
+        # self.scene_feed = gaze_thread(self.calibrator, 'scene')
+        # self.reye_feed = gaze_thread(self.calibrator, 'eye')
+        # self.scene_feed.start()
+        # self.reye_feed.start()
+        # self.scene_feed.ImgUpdate.connect(self.update_scene)
+        # self.reye_feed.ImgUpdate.connect(self.update_reye)
+
+    # def stop_tracking(self):
+        # self.stop_all()
+        # self.calibrator.stop_stream()
 
 
 if __name__ == '__main__':
-	app = QApplication([])
-	sceneCam = SceneCamera('scene')
-	eyeCam = EyeCamera('reye')
-	window = StartWindow(sceneCam, eyeCam)
-	
-	window.show()
-	app.exit(app.exec_())
+    app = QApplication([])
+    window = StartWindow()
+
+    window.show()
+    app.exit(app.exec_())

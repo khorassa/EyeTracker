@@ -1,16 +1,4 @@
-# from PySide2.QtGui import QImage, QPixmap
-# from PySide2.QtCore import QObject, Signal, Slot, QThread, Property, QBasicTimer, QPoint
-# from PySide2.QtQuick import QQuickPaintedItem, QQuickImageProvider
-# from threading import Thread, Lock
-from multiprocessing import Process, Pipe, Value, Condition, Array
 import cv2
-import numpy as np
-import time
-#import uvc ###
-import sys
-#import traceback
-import ctypes
-#import os
 
 
 class Cam_base():
@@ -33,14 +21,8 @@ class Cam_base():
     '''
 
     def __init__(self, name=None):
-        #         self._image = None #self.to_QPixmap(cv2.imread("../ui/test.jpg"))
-        #         self._np_img = None
         self.name = name
-#        self.capturing = Value('i', 0)
         self.dev_list = []
-#         self.fps_res = {}
-#         self.modes = {}
-#         self.mode = None         # --> subclassed property
         self.shared_array = None  # --> subclassed property
         self.shared_pos = None   # --> subclassed property
         self.source = None
@@ -48,17 +30,9 @@ class Cam_base():
         self.width = 0
         self.height = 0
         self.tgt = None
-#        self.pipe, self.child = Pipe()
-#         self.cam_process = None
-#         self.vid_process = None
-#         self.cam_thread = None
-#         self.paused = False
         self.last_frame_check = None
         self.frame_rate = None
         self.cam_active = False
-#         self.gamma = 1.0
-#         self.color = True
-#         self.flip = False
 
     def list_devices(self):
         dev_port = 0
@@ -87,29 +61,11 @@ class Cam_base():
         self.cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
         if self.cap.isOpened():
             self.cam_active = True
-        # if self.name is 'reye':
-        #     res = (320, 240)
-        #     self.cap.set(3, 320)
-        #     self.cap.set(4, 240)
-        # else:
-        #     res = (360, 270)
-        #     self.cap.set(3, 360)
-        #     self.cap.set(4, 270)
-        # self.mode = res + (30,)
 
     def close_cap(self):
         self.cap.release()
         self.cam_active = False
         print(self.name, 'capture closed')
-        # self.load_state()
-        # self._set_fps_modes()
-        #self.shared_array = self.create_shared_array(self.mode)
-#         self.capturing.value = 1
-#         self.init_process(source, self.child, self.shared_array,
-#                           self.shared_pos, self.mode, self.capturing)
-#         self.cam_thread = Thread(target=self.thread_loop, args=())
-#         #self.save_state()
-#         self.cam_thread.start()
 
     def check_res(self):
         self.width = self.cap.get(3)
@@ -138,28 +94,11 @@ class Cam_base():
         if self.last_frame_check:
             return self.process(img)
 
-    def process(self, img):  # defined properly in the upper level class, separately in SceneCamera and EyeCamera
+    def process(self, img):  # defined properly in the upper level classes: SceneCamera and EyeCamera
         return img
 
     def simulate(self):
         return
-
-    def get_processed_data(self):
-        nparray = np.frombuffer(self.shared_pos, dtype=ctypes.c_float)
-        return nparray
-
-    def get_np_image(self):
-        return self._np_img
-
-    def _get_shared_np_array(self):
-        nparray = np.frombuffer(self.shared_array, dtype=ctypes.c_uint8)
-        w, h = self.mode[0], self.mode[1]
-        return nparray.reshape((h, w, 3))
-
-    def create_shared_array(self, mode):
-        w = mode[0]
-        h = mode[1]
-        return Array(ctypes.c_uint8, h*w*3, lock=False)
 
     def save_tgt_id(self, tgt_id):
         self.tgt = tgt_id

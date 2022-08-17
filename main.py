@@ -1,6 +1,4 @@
 import sys
-import time
-import cv2
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import QThread, QTimer, Signal, QSize, Qt
 from PySide2.QtGui import QPixmap, QImage, QPainter
@@ -14,7 +12,6 @@ from eye import EyeCamera
 from vid_thread import vid_feed
 from vid_thread import gaze_feed
 from calibration import Calibrator
-from camera import gaze_thread
 
 
 class CalibWindow(QWidget):
@@ -64,9 +61,6 @@ class CalibWindow(QWidget):
     def connectEnableEst(self):
         self.estimate_button.emit()
         self.close()
-
-    def end_calib(self):
-        pass
 
 
 class StartWindow(QMainWindow):
@@ -173,28 +167,6 @@ class StartWindow(QMainWindow):
 
     def stop_tracking(self):
         self.both_feeds.stop()
-        # self.calibrator.set_sources(self.sceneCam, self.eyeCam)
-        # self.calibrator.start_stream()
-        # time.sleep(1.0)
-        # if self.calibrator.return_scene() != 'empty':
-        #     self.scene_feed = vid_feed(self.calibrator)
-        #     self.reye_feed = vid_feed(self.calibrator)
-        #     self.scene_feed.start()
-        #     self.reye_feed.start()
-        #     self.scene_feed.ImgUpdate.connect(self.update_scene)
-        #     self.reye_feed.ImgUpdate.connect(self.update_reye)
-
-    # def stream_feeds(self):
-        # self.scene_feed = gaze_thread(self.calibrator, 'scene')
-        # self.reye_feed = gaze_thread(self.calibrator, 'eye')
-        # self.scene_feed.start()
-        # self.reye_feed.start()
-        # self.scene_feed.ImgUpdate.connect(self.update_scene)
-        # self.reye_feed.ImgUpdate.connect(self.update_reye)
-
-    # def stop_tracking(self):
-        # self.stop_all()
-        # self.calibrator.stop_stream()
 
 
 if __name__ == '__main__':

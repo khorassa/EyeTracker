@@ -2,10 +2,6 @@ import cv2
 import time
 import numpy as np
 import camera_base
-import sys
-import ctypes
-#from multiprocessing import Array, Process
-#from pupil_detectors import Detector2D
 
 
 class EyeCamera(camera_base.Cam_base):
@@ -21,14 +17,9 @@ class EyeCamera(camera_base.Cam_base):
 
     def __init__(self, name=None):
         super().__init__(name)
-        #self.mode = mode
         self.cam_process = None
         self.vid_process = None
-        # self.shared_array = self.create_shared_array(mode)
-        # self.shared_pos = self.create_shared_pos()
         self.mode_3D = False
-        #self.detector_2D = Detector2D()
-        # self.detector_2D.update_properties({'2d':{'pupil_size_max':250}})
         self.countdown = 5
         self.pos = np.array([-1, -1, -1])
         self.pupil_detection = False
@@ -57,14 +48,6 @@ class EyeCamera(camera_base.Cam_base):
         else:
             self.detector = cv2.SimpleBlobDetector_create(self.cv2_params)
 
-    # def create_shared_array(self, mode):
-        # w = mode[0]
-        # h = mode[1]
-        # return Array(ctypes.c_uint8, h*w*3, lock=False)
-
-    # def create_shared_pos(self):
-        # return Array(ctypes.c_float, 4, lock=False)
-
     def process(self, img):
         if img is None:
             return
@@ -86,7 +69,7 @@ class EyeCamera(camera_base.Cam_base):
         # self.countdown -= 1
         # if self.countdown <= 0:
         # self.pos = None
-        x = ((self.tgt-1) % 3) * (1/3) + 1/6  # change to sin(something)
+        x = ((self.tgt-1) % 3) * (1/3) + 1/6
         y = ((self.tgt-1)//3) * (1/3) + 1/6
         self.pos = np.array([x, y, time.monotonic()], dtype='float32')
         #print("<<< Pupil simulated at:", self.pos)
@@ -94,10 +77,10 @@ class EyeCamera(camera_base.Cam_base):
 
     def simulate(self):
         img = cv2.imread('aruco.png')
-        x = ((self.tgt-1) % 3) * (1/3) + 1/6  # change to sin(something)
+        x = ((self.tgt-1) % 3) * (1/3) + 1/6
         y = ((self.tgt-1)//3) * (1/3) + 1/6
-        target_pos = np.array([x, y, time.monotonic()], dtype='float32')
-        return img, target_pos
+        self.pos = np.array([x, y, time.monotonic()], dtype='float32')
+        return img, self.pos
 
     def _draw_tracking_info(self, result, img, color=(255, 120, 120)):
         ellipse = result["ellipse"]
@@ -113,7 +96,8 @@ class EyeCamera(camera_base.Cam_base):
         cv2.ellipse(img, center, axes, rad, 0, 360, color, 2)
 
     def reset_model(self):
-        self.detector_2D.reset_model()
+        # self.detector_2D.reset_model()
+        pass
 
     def get_processed_data(self):
         return self.pos

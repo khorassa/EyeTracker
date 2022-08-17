@@ -24,9 +24,6 @@ class Calibrator(QObject):
     enable_estimation = Signal()
     draw_estimation = Signal('QVariantList', 'QVariantList', 'QVariantList',
                              'QString', 'QString')
-    # sceneImg = Signal()
-    # reyeImg = Signal()
-    FeedUpdate = Signal()
 
     def __init__(self, v_targets, h_targets, samples_per_tgt, timeout):
         super().__init__()
@@ -37,8 +34,6 @@ class Calibrator(QObject):
         self.target_list = self._generate_target_list(v_targets, h_targets)
         self.h_targets = h_targets
         self.v_targets = v_targets
-        #self.storer = ds.Storer(self.target_list)
-        #self.l_regressor, self.l_regressor_3D = None, None
         self.r_regressor, self.r_regressor_3D = None, None
         self.current_target = -1
         self.scene, self.reye = None, None
@@ -63,7 +58,6 @@ class Calibrator(QObject):
     def start_calibration(self):
         self.learning = Thread(target=self.calibrate, args=(), daemon=True)
         self.learning.start()
-        # self.learning.join()
 
     def calibrate(self):
         trgt_data = []
@@ -85,11 +79,9 @@ class Calibrator(QObject):
             while time.time() - stT < self.timeout:  # seconds
                 self.scene.save_tgt_id(self.curr_tgt_idx)
                 self.reye.save_tgt_id(self.curr_tgt_idx)
-                # image processing happens inside return_frame, check camera_base
+                # image processing happens inside return_frame
                 sceneimg, aruco_pos = self.scene.return_frame()
                 eyeimg, eye_pos = self.reye.return_frame()
-                #print('scene processed data: ', aruco_pos)
-                #print('eye processed data: ', eye_pos)
                 if aruco_pos[0] != -1:
                     trgt_pos.append(aruco_pos)  # third value is time
                     tgt_x.append(aruco_pos[0])
@@ -108,7 +100,6 @@ class Calibrator(QObject):
                 continue
             # median of each dimension separately over all 5 seconds
             pupil_data.append(pup_tup)
-            # spliting the x and y could cause issues if the user is moving their head too much
             trgt_data.append(tgt_tup)
             self.curr_tgt_idx += 1
         print('>>> data collection ended, proceeding with fitting the estimation function')
@@ -174,83 +165,6 @@ class Calibrator(QObject):
         rnd.shuffle(target_list)
         return target_list
 
-    # def _get_target_data(self, maxfreq, minfreq):
-        # '''
-        # scene: sceneCamera object
-        # le: left eyeCamera object
-        # re: right eyeCamera object
-        # thresh: amount of data to be collected per target
-        # '''
-        # idx = self.current_target
-        # t = time.time()
-        # tgt = self.storer.targets
-
-        # while (len(tgt[idx]) < self.samples) and (time.time()-t < self.timeout):
-        # self.storer.collect_data(idx, self.mode_3D, minfreq)
-        # tgt = self.storer.targets
-        # time.sleep(1/maxfreq)
-        # self.move_on.emit()
-        # print("number of samples collected: t->{}, l->{}, r->{}".format(
-        # len(self.storer.targets[idx]),
-        # len(self.storer.l_centers[idx]),
-        # len(self.storer.r_centers[idx])))
-
-    @Property('QVariantList')
-    def target(self):
-        if self.current_target >= len(self.target_list):
-            return [-1, -1]
-        tgt = self.target_list[self.current_target]
-        converted = [float(tgt[0]), float(tgt[1])]
-        return converted
-
-    # @Slot()
-    # def start_calibration(self):
-        # print('reseting calibration')
-        # self.storer.initialize_storage(len(self.target_list))
-        # self.l_regressor = None
-        # self.r_regressor = None
-        # self.l_regressor_3D = None
-        # self.r_regressor_3D = None
-        # self.current_target = -1
-
-    @Slot()
-    def next_target(self):
-        if self.collector is not None:
-            self.collector.join()
-        self.current_target += 1
-
-    @Slot(int, int)
-    def collect_data(self, minfq, maxfq):
-        self.collector = Thread(
-            target=self._get_target_data, args=(minfq, maxfq,))
-        self.collector.start()
-
-    # @Slot()
-    # def perform_estimation(self):
-        # '''
-        # Finds a gaze estimation function to be used for
-        # future predictions. Based on Gaussian Processes regression.
-        # '''
-        # # clf_l = self._get_clf()
-        # clf_r = self._get_clf()
-        # st, sl, sr = self.storer.get_random_test_samples(
-        # self.samples, len(self.target_list))
-        # targets = self.storer.get_targets_list()
-        # # if self.leye.is_cam_active():
-        # # l_centers = self.storer.get_l_centers_list(self.mode_3D)
-        # # clf_l.fit(l_centers, targets)
-        # # self._set_regressor('left', clf_l)
-        # if self.reye.is_cam_active():
-        # r_centers = self.storer.get_r_centers_list(self.mode_3D)
-        # clf_r.fit(r_centers, targets)
-        # self._set_regressor('right', clf_r)
-        # print("Gaze estimation finished")
-        # self._test_calibration(st, sl, sr)
-        # print('Estimation assessment ready')
-        # self.enable_estimation.emit()
-        # if self.storage:
-        # self.storer.store_calibration()
-
     def _set_regressor(self, eye, clf):
         if eye == 'left':
             if self.mode_3D:
@@ -263,24 +177,7 @@ class Calibrator(QObject):
             else:
                 self.r_regressor = clf
 
-    # @Property('QVariantList')
-    # def predict(self):
-        # data, pred = [], []
-        # if self.mode_3D:
-            # data, pred = self._predict3d()
-            # if self.storage:
-                # l_gz, r_gz   = pred[:2], pred[2:]
-                # l_raw, r_raw = data[:3], data[3:]
-                # self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
-        # else:
-            # data, pred = self._predict2d()
-            # if self.storage:
-                # l_gz, r_gz   = pred[:2], pred[2:]
-                # l_raw, r_raw = data[:2], data[2:]
-                # self.storer.append_session_data(l_gz, r_gz, l_raw, r_raw)
-        # return pred
-
-    def _test_calibration(self, st, sl, sr):
+    def _test_calibration(self, st, sl, sr):  # not used, check in future
         le_error, re_error = [], []
         tgt_mean, le_mean, re_mean = [], [], []
         for t in st.keys():
@@ -305,35 +202,6 @@ class Calibrator(QObject):
         self.estimation['le_error'] = "{:.3f}%".format(le_err_porc)
         self.estimation['re_error'] = "{:.3f}%".format(re_err_porc)
 
-    @Slot()
-    def show_estimation(self):
-        tgt = self.estimation['target']
-        le = self.estimation['left_eye']
-        re = self.estimation['right_eye']
-        le_err = self.estimation['le_error']
-        re_err = self.estimation['re_error']
-        print("calling draw_estimation")
-        # used for drawing estimation
-        self.draw_estimation.emit(tgt, le, re, le_err, re_err)
-
-    def _predict_batch(self, le, re):
-        le_pred, re_pred = [0], [0]
-        if (self.l_regressor or self.l_regressor_3D) and le is not None:
-            if self.mode_3D:
-                input_data = le[:, :3]
-                le_pred = self.l_regressor_3D.predict(input_data)
-            else:
-                input_data = le[:, :2]
-                le_pred = self.l_regressor.predict(input_data)
-        if (self.r_regressor or self.r_regressor_3D) and re is not None:
-            if self.mode_3D:
-                input_data = re[:, :3]
-                re_pred = self.r_regressor_3D.predict(input_data)
-            else:
-                input_data = re[:, :2]
-                re_pred = self.r_regressor.predict(input_data)
-        return le_pred, re_pred
-
     def _predict2d(self, pupil_pos):
         # data = [-1,-1,-1,-1]
         # pred = [-1,-1,-1,-1]
@@ -346,7 +214,7 @@ class Calibrator(QObject):
             #pred[2], pred[3] = float(re_coord[0]), float(re_coord[1]) ###
         return tuple((float(re_coord[0]), float(re_coord[1])))
 
-    def _predict3d(self):
+    def _predict3d(self):  # not used, check in future
         d = [-1 for i in range(6)]
         pred = [-1, -1, -1, -1]
         if self.r_regressor_3D:
@@ -357,18 +225,6 @@ class Calibrator(QObject):
                 d[3], d[4], d[5] = input_data[0]
                 pred[2], pred[3] = float(re_coord[0]), float(re_coord[1])
         return d, pred
-
-    # @Slot()
-    # def toggle_3D(self):
-        # self.mode_3D = not self.mode_3D
-
-    @Slot()
-    def toggle_storage(self):
-        self.storage = not self.storage
-
-    # @Slot()
-    # def save_session(self):
-        # self.storer.store_session()
 
     def _get_clf(self):
         kernel = 1.5*kernels.RBF(length_scale=1.0,

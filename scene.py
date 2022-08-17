@@ -38,6 +38,7 @@ class SceneCamera(camera_base.Cam_base):
         dict4 = cv2.aruco.DICT_4X4_50
         aruco_dict = cv2.aruco.getPredefinedDictionary(dict4)
         corners, ids, _ = cv2.aruco.detectMarkers(img, aruco_dict)
+        target_pos = np.array([-1, -1, -1])
         if ids is not None:
             cv2.aruco.drawDetectedMarkers(img, corners, ids)
             mean = np.mean(corners[0][0], axis=0)
@@ -45,6 +46,11 @@ class SceneCamera(camera_base.Cam_base):
             y = mean[1]/height
             target_pos = np.array([x, y, time.monotonic()], dtype='float32')
             print('>>> Aruco at:', target_pos)
+        else:
+            x = ((self.tgt-1) % 3) * (1/3) + 1/6  # change to sin(something)
+            y = ((self.tgt-1)//3) * (1/3) + 1/6
+            target_pos = np.array([x, y, time.monotonic()], dtype='float32')
+            print('>>> Aruco simulated at:', target_pos)
 
         return img, target_pos
 

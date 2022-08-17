@@ -44,7 +44,6 @@ class CalibWindow(QWidget):
         size = QSize(self.size().width()//(h_targets+1),
                      self.size().height()//(v_targets+1))
         if tgt_i == 1:
-            pixmap = QPixmap('aruco.png')
             self.targets = []
             for row in range(v_targets):
                 self.targets.append([])
@@ -74,7 +73,7 @@ class StartWindow(QMainWindow):
         self.sceneCam = SceneCamera('scene')
         self.eyeCam = EyeCamera('reye')
         # timeout should be 5 seconds
-        self.calibrator = Calibrator(3, 3, 30, 3)
+        self.calibrator = Calibrator(1, 2, 30, 3)
         self.calibrator.set_sources(self.sceneCam, self.eyeCam)
 
         # Ability to use video file
@@ -113,7 +112,6 @@ class StartWindow(QMainWindow):
         self.buttonCalib.clicked.connect(self.calib_popup)
 
     def update_scene(self, img):
-        #print('reaching here?')
         self.fig_scene.setPixmap(QPixmap(img))
 
     def update_reye(self, img):
@@ -141,29 +139,35 @@ class StartWindow(QMainWindow):
         self.calibrator.stop_stream()
 
     def calib_popup(self):
+        self.init_cams()
         self.calibwindow = CalibWindow(self.calibrator)
         self.calibwindow.estimate_button.connect(self.enable_estButton)
         self.calibwindow.showMaximized()
 
     def enable_estButton(self):
-        print('activate estimation button')
-        self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
-        self.layoutTop.addWidget(self.EstButton)
-        self.EstButton.clicked.connect(self.start_tracking)
-        self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
+        self.buttonFeeds.deleteLater()
+        self.buttonTrack = QPushButton(
+            'Initiate gaze tracking', self.top_widget)
+        self.layoutTop.addWidget(self.buttonTrack)
+        self.buttonTrack.clicked.connect(self.start_tracking)
+        #self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
+        # self.layoutTop.addWidget(self.EstButton)
+        # self.EstButton.clicked.connect(self.start_tracking)
+        #self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
 
     def start_tracking(self):
+        print("Oi")
         self.init_cams()
-        self.calibrator.set_sources(self.sceneCam, self.eyeCam)
-        self.calibrator.start_stream()
-        time.sleep(1.0)
-        if self.calibrator.return_scene() != 'empty':
-            self.scene_feed = vid_feed(self.calibrator)
-            self.reye_feed = vid_feed(self.calibrator)
-            self.scene_feed.start()
-            self.reye_feed.start()
-            self.scene_feed.ImgUpdate.connect(self.update_scene)
-            self.reye_feed.ImgUpdate.connect(self.update_reye)
+        # self.calibrator.set_sources(self.sceneCam, self.eyeCam)
+        # self.calibrator.start_stream()
+        # time.sleep(1.0)
+        # if self.calibrator.return_scene() != 'empty':
+        #     self.scene_feed = vid_feed(self.calibrator)
+        #     self.reye_feed = vid_feed(self.calibrator)
+        #     self.scene_feed.start()
+        #     self.reye_feed.start()
+        #     self.scene_feed.ImgUpdate.connect(self.update_scene)
+        #     self.reye_feed.ImgUpdate.connect(self.update_reye)
 
     # def stream_feeds(self):
         # self.scene_feed = gaze_thread(self.calibrator, 'scene')

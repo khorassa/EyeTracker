@@ -18,7 +18,7 @@ class SceneCamera(camera_base.Cam_base):
     - providing marker position information to other objects
     '''
 
-    def __init__(self, name=None, mode=(640,480,30)):
+    def __init__(self, name=None, mode=(640, 480, 30)):
         super().__init__(name)
         self.mode = mode
         self.cam_process = None
@@ -29,45 +29,44 @@ class SceneCamera(camera_base.Cam_base):
 
     def toggle_calib(self):
         self.calibration = ~self.calibration
-    
+
     def process(self, img):
-        #if not self.calibration: return img # for non-calibration time
-        target_pos = np.array([-1, -1, -1])
-        if self.calibration:
-            height, width = img.shape[0], img.shape[1]
-            dict4 = cv2.aruco.DICT_4X4_50
-            aruco_dict = cv2.aruco.getPredefinedDictionary(dict4)
-            corners, ids,_ = cv2.aruco.detectMarkers(img, aruco_dict)
-            if ids is not None:
-                cv2.aruco.drawDetectedMarkers(img, corners, ids)
-                mean = np.mean(corners[0][0], axis=0)
-                x = mean[0]/width
-                y = mean[1]/height
-                target_pos = np.array([x,y,time.monotonic()],dtype='float32')
-                print('>>> Aruco at:', target_pos)
-        
+        if not self.calibration:
+            return img, np.array([-1, -1, -1])
+
+        height, width = img.shape[0], img.shape[1]
+        dict4 = cv2.aruco.DICT_4X4_50
+        aruco_dict = cv2.aruco.getPredefinedDictionary(dict4)
+        corners, ids, _ = cv2.aruco.detectMarkers(img, aruco_dict)
+        if ids is not None:
+            cv2.aruco.drawDetectedMarkers(img, corners, ids)
+            mean = np.mean(corners[0][0], axis=0)
+            x = mean[0]/width
+            y = mean[1]/height
+            target_pos = np.array([x, y, time.monotonic()], dtype='float32')
+            print('>>> Aruco at:', target_pos)
+
         return img, target_pos
-        #find aruco image
-    
+
     def simulate(self):
         img = cv2.imread('aruco.png')
-        x = ((self.tgt-1)%3) * (1/3) + 1/6
+        x = ((self.tgt-1) % 3) * (1/3) + 1/6
         y = ((self.tgt-1)//3) * (1/3) + 1/6
-        target_pos = np.array([x,y,time.monotonic()],dtype='float32')
+        target_pos = np.array([x, y, time.monotonic()], dtype='float32')
         return img, target_pos
-    
+
     def init_process(self, source, pipe, array, pos, mode, cap):
         mode = self.check_mode_availability(source, mode)
-        self.cam_process = SceneImageProcessor(source, mode, pipe, 
+        self.cam_process = SceneImageProcessor(source, mode, pipe,
                                                array, cap, pos)
-        self.cam_process.start()  
+        self.cam_process.start()
 
     def init_vid_process(self, source, pipe, array, pos, mode, cap):
         mode = self.check_mode_availability(source, mode)
         self.cam_process = SceneImageProcessor(source, mode, pipe,
-                                             array, cap, pos)
+                                               array, cap, pos)
         self.vid_process = Process(target=self.cam_process.run_vid, args=())
-        self.vid_process.start()    
+        self.vid_process.start()
 
     def join_process(self):
         self.cam_process.join(10)
@@ -88,11 +87,8 @@ class SceneCamera(camera_base.Cam_base):
         # cap = uvc.Capture(dev_list[source]['uid'])
         # # m = (mode[1], mode[0], mode[2])
         # if mode not in cap.avaible_modes:
-            # m = cap.avaible_modes[0]
-            # mode = (m[1], m[0], m[2])
-            # self.shared_array = self.create_shared_array(mode)
-            # self.mode = mode
+        # m = cap.avaible_modes[0]
+        # mode = (m[1], m[0], m[2])
+        # self.shared_array = self.create_shared_array(mode)
+        # self.mode = mode
         # return mode
-        
-
-

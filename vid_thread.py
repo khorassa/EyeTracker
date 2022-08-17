@@ -6,20 +6,14 @@ class vid_feed(QThread):
 
     ImgUpdate = Signal(QImage)
 
-    def __init__(self, thing, mode):
+    def __init__(self, thing):
         super().__init__()
         self.player = thing
-        self.mode = mode
 
     def run(self):
         self.ThreadActive = True
         while self.ThreadActive:
-            if self.mode == 'normal':
-                image = self.player.return_raw()
-            elif self.mode == 'scene':
-                image = self.player.return_scene()
-            else:
-                image = self.player.return_eye()
+            image, idc = self.player.return_frame()
             qimage = QImage(
                 image, image.shape[1], image.shape[0], QImage.Format_RGB888)
             self.ImgUpdate.emit(qimage)

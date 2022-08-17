@@ -87,9 +87,11 @@ class StartWindow(QMainWindow):
         self.scene_menu.addItems(list_of_cams)
         self.reye_menu.addItems(list_of_cams)
         self.reye_menu.setCurrentIndex(self.scene_menu.currentIndex() + 1)
-        self.buttonFeeds = QPushButton('Initialize cameras', self.top_widget)
+        self.buttonFeeds = QPushButton('Start video feeds', self.top_widget)
         self.buttonCalib = QPushButton('Calibrate', self.top_widget)
         self.buttonStop = QPushButton('Stop', self.top_widget)
+        self.check_pupil_detection = QCheckBox(
+            'Pupil detection', self.top_widget)
         self.fig_scene = QLabel()
         self.fig_reye = QLabel()
 
@@ -98,6 +100,7 @@ class StartWindow(QMainWindow):
         self.layoutTop.addWidget(self.buttonFeeds)
         self.layoutTop.addWidget(self.buttonStop)
         self.layoutTop.addWidget(self.buttonCalib)
+        self.layoutTop.addWidget(self.check_pupil_detection)
         self.layoutTop.addWidget(self.fig_scene)
         self.layoutTop.addWidget(self.scene_menu)
         self.layoutTop.addWidget(self.fig_reye)
@@ -122,8 +125,11 @@ class StartWindow(QMainWindow):
 
     def start_feeds(self):
         self.init_cams()
-        self.scene_feed = vid_feed(self.sceneCam, 'normal')
-        self.reye_feed = vid_feed(self.eyeCam, 'normal')
+        if self.check_pupil_detection.isChecked():
+            self.eyeCam.activate_pupil()
+
+        self.scene_feed = vid_feed(self.sceneCam)
+        self.reye_feed = vid_feed(self.eyeCam)
         self.scene_feed.start()
         self.reye_feed.start()
         self.scene_feed.ImgUpdate.connect(self.update_scene)
@@ -152,8 +158,8 @@ class StartWindow(QMainWindow):
         self.calibrator.start_stream()
         time.sleep(1.0)
         if self.calibrator.return_scene() != 'empty':
-            self.scene_feed = vid_feed(self.calibrator, 'scene')
-            self.reye_feed = vid_feed(self.calibrator, 'eye')
+            self.scene_feed = vid_feed(self.calibrator)
+            self.reye_feed = vid_feed(self.calibrator)
             self.scene_feed.start()
             self.reye_feed.start()
             self.scene_feed.ImgUpdate.connect(self.update_scene)

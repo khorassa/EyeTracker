@@ -31,6 +31,31 @@ class EyeCamera(camera_base.Cam_base):
         # self.detector_2D.update_properties({'2d':{'pupil_size_max':250}})
         self.countdown = 5
         self.pos = np.array([-1, -1, -1])
+        self.pupil_detection = False
+
+        # Setup SimpleBlobDetector parameters.
+        self.cv2_params = cv2.SimpleBlobDetector_Params()
+        # Change thresholds
+        #self.cv2_params.minThreshold = 10
+        #self.cv2_params.maxThreshold = 200
+        # Filter by Area.
+        self.cv2_params.filterByArea = True
+        self.cv2_params.minArea = 1500
+        # Filter by Circularity
+        self.cv2_params.filterByCircularity = True
+        self.cv2_params.minCircularity = 0.3
+        # Filter by Convexity
+        self.cv2_params.filterByConvexity = True
+        self.cv2_params.minConvexity = 0.87
+        # Filter by Inertia
+        self.cv2_params.filterByInertia = True
+        self.cv2_params.minInertiaRatio = 0.5
+        # Create a detector with the parameters
+        ver = (cv2.__version__).split('.')
+        if int(ver[0]) < 3:
+            self.detector = cv2.SimpleBlobDetector(self.cv2_params)
+        else:
+            self.detector = cv2.SimpleBlobDetector_create(self.cv2_params)
 
     # def create_shared_array(self, mode):
         # w = mode[0]
@@ -43,8 +68,14 @@ class EyeCamera(camera_base.Cam_base):
     def process(self, img):
         if img is None:
             return
+        if not self.pupil_detection:
+            print("passin through here?")
+            return img, self.pos
         height, width = img.shape[0], img.shape[1]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        keypoints = self.detector.detect(gray)
+        gray_drawn = cv2.drawKeypoints(gray, keypoints, np.array(
+            []), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         # result = self.detector_2D.detect(gray)
         # if result["confidence"] > 0.6:
         #     c = np.array(result['ellipse']['center'])
@@ -55,7 +86,7 @@ class EyeCamera(camera_base.Cam_base):
         # self.countdown -= 1
         # if self.countdown <= 0:
         # self.pos = None
-        return gray, self.pos
+        return gray_drawn, self.pos
 
     def simulate(self):
         img = cv2.imread('aruco.png')
@@ -82,3 +113,6 @@ class EyeCamera(camera_base.Cam_base):
 
     def get_processed_data(self):
         return self.pos
+
+    def activate_pupil(self):
+        self.pupil_detection = True

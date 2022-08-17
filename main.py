@@ -12,6 +12,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QMenuBar, \
 from scene import SceneCamera
 from eye import EyeCamera
 from vid_thread import vid_feed
+from vid_thread import gaze_feed
 from calibration import Calibrator
 from camera import gaze_thread
 
@@ -62,6 +63,7 @@ class CalibWindow(QWidget):
 
     def connectEnableEst(self):
         self.estimate_button.emit()
+        self.close()
 
     def end_calib(self):
         pass
@@ -145,19 +147,32 @@ class StartWindow(QMainWindow):
         self.calibwindow.showMaximized()
 
     def enable_estButton(self):
+        self.check_pupil_detection.deleteLater()
         self.buttonFeeds.deleteLater()
         self.buttonTrack = QPushButton(
             'Initiate gaze tracking', self.top_widget)
         self.layoutTop.addWidget(self.buttonTrack)
         self.buttonTrack.clicked.connect(self.start_tracking)
-        #self.EstButton = QPushButton('Start Gaze Tracking', self.top_widget)
-        # self.layoutTop.addWidget(self.EstButton)
-        # self.EstButton.clicked.connect(self.start_tracking)
-        #self.StopEstButton = QPushButton('Stop Tracking', self.top_widget)
+
+        self.buttonStop.deleteLater()
+        self.buttonStopTrack = QPushButton(
+            'Stop feeds', self.top_widget)
+        self.layoutTop.addWidget(self.buttonStopTrack)
+        self.buttonStopTrack.clicked.connect(self.stop_tracking)
 
     def start_tracking(self):
         print("Oi")
         self.init_cams()
+        if self.check_pupil_detection.isChecked():
+            self.eyeCam.activate_pupil()
+        self.both_feeds = gaze_feed(
+            self.eyeCam, self.sceneCam, self.calibrator)
+        self.both_feeds.start()
+        self.both_feeds.sceneUpd.connect(self.update_scene)
+        self.both_feeds.eyeUpd.connect(self.update_reye)
+
+    def stop_tracking(self):
+        self.both_feeds.stop()
         # self.calibrator.set_sources(self.sceneCam, self.eyeCam)
         # self.calibrator.start_stream()
         # time.sleep(1.0)

@@ -54,6 +54,11 @@ class SceneCamera(camera_base.Cam_base):
 
         return img, target_pos
 
+    # def draw_gaze(self, sceneimg, gazepos):
+    #     cv2.drawMarker(sceneimg, tuple((int(gazepos[0]*sceneimg.shape[1]), int(gazepos[1]*sceneimg.shape[0]))),
+    #                    (0, 255, 0), cv2.MARKER_CROSS, 12, 1)
+    #     return sceneimg
+
     def simulate(self):
         img = cv2.imread('aruco.png')
         x = ((self.tgt-1) % 3) * (1/3) + 1/6

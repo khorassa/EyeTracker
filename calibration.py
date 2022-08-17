@@ -145,6 +145,12 @@ class Calibrator(QObject):
             self.processed_eye = eyeimg
             self.processed_scene = sceneimg
 
+    def estimate_gaze(self, pupil_pos):
+        gaze_est = self._predict2d(pupil_pos)
+        print('>>> pupil pos:', pupil_pos)
+        print('>>> gaze point:', gaze_est)
+        return gaze_est
+
     def return_eye(self):
         return self.processed_eye
 

@@ -89,7 +89,7 @@ class EyeCamera(camera_base.Cam_base):
         x = ((self.tgt-1) % 3) * (1/3) + 1/6  # change to sin(something)
         y = ((self.tgt-1)//3) * (1/3) + 1/6
         self.pos = np.array([x, y, time.monotonic()], dtype='float32')
-        print("<<< Pupil simulated at:", self.pos)
+        #print("<<< Pupil simulated at:", self.pos)
         return gray_drawn, self.pos
 
     def simulate(self):

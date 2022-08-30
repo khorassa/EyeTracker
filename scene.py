@@ -19,8 +19,8 @@ class SceneCamera(camera_base.Cam_base):
         self.mode = mode
         self.cam_process = None
         self.vid_process = None
-        self.shared_array = self.create_shared_array(mode)
-        self.shared_pos = self.create_shared_pos()
+        #self.shared_array = self.create_shared_array(mode)
+        #self.shared_pos = self.create_shared_pos()
         self.calibration = False
 
     def toggle_calib(self):

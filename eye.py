@@ -1,5 +1,6 @@
 import cv2
 import time
+import random
 import numpy as np
 import camera_base
 
@@ -31,16 +32,16 @@ class EyeCamera(camera_base.Cam_base):
         #self.cv2_params.maxThreshold = 200
         # Filter by Area.
         self.cv2_params.filterByArea = True
-        self.cv2_params.minArea = 1500
+        self.cv2_params.minArea = 100
         # Filter by Circularity
         self.cv2_params.filterByCircularity = True
-        self.cv2_params.minCircularity = 0.3
+        self.cv2_params.minCircularity = 0.1
         # Filter by Convexity
         self.cv2_params.filterByConvexity = True
-        self.cv2_params.minConvexity = 0.87
+        self.cv2_params.minConvexity = 0.5
         # Filter by Inertia
         self.cv2_params.filterByInertia = True
-        self.cv2_params.minInertiaRatio = 0.5
+        self.cv2_params.minInertiaRatio = 0.2
         # Create a detector with the parameters
         ver = (cv2.__version__).split('.')
         if int(ver[0]) < 3:
@@ -52,10 +53,10 @@ class EyeCamera(camera_base.Cam_base):
         if img is None:
             return
         if not self.pupil_detection:
-            print("passin through here?")
             return img, self.pos
         height, width = img.shape[0], img.shape[1]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
         keypoints = self.detector.detect(gray)
         gray_drawn = cv2.drawKeypoints(gray, keypoints, np.array(
             []), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -69,8 +70,12 @@ class EyeCamera(camera_base.Cam_base):
         # self.countdown -= 1
         # if self.countdown <= 0:
         # self.pos = None
-        x = ((self.tgt-1) % 3) * (1/3) + 1/6
-        y = ((self.tgt-1)//3) * (1/3) + 1/6
+        try:
+            x = ((self.tgt-1) % 3) * (1/3) + 1/6
+            y = ((self.tgt-1)//3) * (1/3) + 1/6
+        except:
+            x = random.random()
+            y = random.random()
         self.pos = np.array([x, y, time.monotonic()], dtype='float32')
         #print("<<< Pupil simulated at:", self.pos)
         return gray_drawn, self.pos
